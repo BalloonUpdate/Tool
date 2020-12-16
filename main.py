@@ -20,7 +20,7 @@ def main():
 
         marker = ''
         while True:
-            print('列目录: '+path)
+            print('扫描目录: '+path[:-1])
             response = client.list_objects(Bucket=bukkit, Delimiter='/', Prefix=path, Marker=marker)
 
             # 所有的文件
@@ -59,7 +59,7 @@ def main():
         sys.exit()
 
     settings = File(sys.executable).parent('cos.json') if not inDevelopment else File('cos.json')
-    source = File(sys.argv[1]) if not inDevelopment else File(r'D:\hyperink\Desktop\a\resources')
+    source = File(sys.argv[1]) if not inDevelopment else File(r'D:\nginx-1.19.1\updatertest')
 
     if not source.exists:
         print(f'目录 {source.path} 找不到')
@@ -96,14 +96,14 @@ def main():
         content = json.dumps(generateStructure(dirInSource), ensure_ascii=False, indent=4)
         dirInSource.parent(dirInSource.name + '.json').content = content
 
-    print('正在获取远程目录..  (可能需要点时间)')
+    print('正在扫描远程目录..  (可能需要点时间,具体速度由文件数量决定)')
     # tree = json.loads(debugCos.content)
     tree = generateRemoteTree()
     # debugCos.content = json.dumps(tree, ensure_ascii=False, indent=4)
 
-    print('正在计算差异.. (可能需要点时间)')
+    print('正在计算差异.. (可能需要亿点时间)')
     comparer = FileComparer2(source)
-    comparer.compareWith(source, tree)
+    comparer.compareWith(tree, source)
 
     if len(comparer.uselessFolders) == 0 and len(comparer.uselessFiles) == 0 and \
             len(comparer.missingFolders) == 0 and len(comparer.missingFiles) == 0:
@@ -159,16 +159,24 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except CosServiceError as e:
-        print('COS异常(可能是配置信息不正确): ')
-        print(e.get_error_code())
-        print(e.get_error_msg())
-    except SystemExit:
-        pass
-    except BaseException:
-        pass
+    count = 1
 
+    while True:
+        try:
+            main()
+
+            input(f'任意键重新上传,如果不需要重新上传请退出本程序')
+            print(f'\n\n\n------------------第{count}次重新上传------------------')
+            count += 1
+        except CosServiceError as e:
+            print('COS异常(可能是配置信息不正确): ')
+            print(e.get_error_code())
+            print(e.get_error_msg())
+            break
+        except SystemExit:
+            break
+        except BaseException as e:
+            print(e)
+            break
     if not inDevelopment:
-        input('任意键退出..')
+        input(f'任意键退出..')

@@ -5,7 +5,7 @@ import hashlib
 import pathlib
 
 
-# 时间
+# 2020年12月16日23:25:45
 class File:
     def __init__(self, filePath):
         if not isinstance(filePath, str):
@@ -195,6 +195,10 @@ class File:
             sha1obj = hashlib.sha1()
             sha1obj.update(f.read())
             return sha1obj.hexdigest()
+
+    @property
+    def hash(self):
+        return self.sha1
 
     @property
     def createdTime(self):
