@@ -62,7 +62,7 @@ def main():
         structure = []
 
         pureName2 = path[:path.rfind('/')]
-        pureName2 = pureName2[pureName2.rfind('/')+1:]
+        pureName2 = pureName2[pureName2.rfind('/') + 1:]
         print(i + pureName2)
 
         d = []
@@ -76,7 +76,7 @@ def main():
             else:  # 判断obj为文件。
                 if obj.key == path:
                     continue
-                pureName = obj.key[obj.key.rfind('/')+1:]
+                pureName = obj.key[obj.key.rfind('/') + 1:]
                 # print(i + 'f: ' + pureName)
                 headers = bucket.head_object(obj.key).headers
                 hash = headers['x-oss-meta-updater-sha1'] if 'x-oss-meta-updater-sha1' in headers else ''
@@ -101,7 +101,7 @@ def main():
 
     cosSettings = File(sys.executable).parent('cos.json') if not inDevelopment else File('cos.json')
     ossSettings = File(sys.executable).parent('oss.json') if not inDevelopment else File('oss.json')
-    source = File(sys.argv[1]) if not inDevelopment else File(r'D:\nginx-1.19.1\updatertest')
+    source = File(sys.argv[1]) if not inDevelopment else File(r'D:\hyperink\Desktop\root')
 
     if not source.exists:
         print(f'目录 {source.path} 找不到')
@@ -133,16 +133,17 @@ def main():
     print('上传到阿里云对象存储(OSS)..' if not isCos else '上传到腾讯云对象存储(COS)..')
     print('')
 
-    # 为重新生成结构文件
-    for dirInSource in source:
-        # 跳过所有文件
-        if dirInSource.isFile:
-            continue
+    if 'nojson' not in config:
+        # 为重新生成结构文件
+        for dirInSource in source:
+            # 跳过所有文件
+            if dirInSource.isFile:
+                continue
 
-        print(f'正在生成 {dirInSource.name}.json')
+            print(f'正在生成 {dirInSource.name}.json')
 
-        content = json.dumps(generateStructure(dirInSource), ensure_ascii=False, indent=4)
-        dirInSource.parent(dirInSource.name + '.json').content = content
+            content = json.dumps(generateStructure(dirInSource), ensure_ascii=False, indent=4)
+            dirInSource.parent(dirInSource.name + '.json').content = content
 
     print('正在扫描远程目录..')
     tree = generateRemoteTreeByCos() if isCos else generateRemoteTreeByOss()
