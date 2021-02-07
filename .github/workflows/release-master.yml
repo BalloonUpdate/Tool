@@ -25,6 +25,7 @@ jobs:
           python -m pip install -r requirements.txt
           python ci\generate_version_file.py
           C:\hostedtoolcache\windows\Python\3.7.9\x64\Scripts\pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -c -F -n Deployer main.py
+          Copy-Item config.exam.json dist\
           dir
 
       - name: Print Hashes
