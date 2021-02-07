@@ -1,7 +1,7 @@
-from file import File
+from src.utilities.file import File
 
 
-def generateStructure(dir: File):
+def dir_hash(dir: File):
     structure = []
     for f in dir:
         if f.isFile:
@@ -13,6 +13,6 @@ def generateStructure(dir: File):
         if f.isDirectory:
             structure.append({
                 'name': f.name,
-                'tree': generateStructure(f)
+                'tree': dir_hash(f)
             })
     return structure

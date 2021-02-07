@@ -1,0 +1,8 @@
+{
+  "service_provider": "tencent",
+  "bukkit": "test-1254073044",
+  "secret_id": "AKIDtcnmN4ez6toYOoqCZ2FE6yYz0oNiiEgi",
+  "secret_key": "kMlwvBQS2A1f5pLHWemj3YJvA0Sw5gqx",
+  "region": "ap-chongqing",
+  "skip_hashing_before_uploading": false
+}

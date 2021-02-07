@@ -1,6 +1,4 @@
-from functools import singledispatchmethod
-
-from file import File
+from src.utilities.file import File
 
 
 class SimpleFileObject:
@@ -111,12 +109,12 @@ class FileComparer2:
     def __init__(self, basePath: File):
         super().__init__()
         self.basePath = basePath
-        self.uselessFiles = []
-        self.uselessFolders = []
-        self.missingFiles = {}
-        self.missingFolders = []
+        self.oldFiles = []
+        self.oldFolders = []
+        self.newFiles = {}
+        self.newFolders = []
 
-    def findMissingFiles(self, current: SimpleFileObject, template: File):
+    def findNewFiles(self, current: SimpleFileObject, template: File):
         """只扫描新增的文件(不包括被删除的)
         :param current: 远程文件结构(目录)
         :param template: 本地文件结构(目录)
@@ -124,29 +122,29 @@ class FileComparer2:
 
         for t in template:
             if t.name not in current:  # 文件不存在
-                self.addMissingFile(SimpleFileObject.FromFile(t), t)
+                self.addNewFile(SimpleFileObject.FromFile(t), t)
             else:  # 文件存在的话要进行进一步判断
                 corresponding = current(t.name)
 
                 if t.isDirectory:
                     if corresponding.isFile:
                         # 先删除旧的再获取新的
-                        self.addUselessFile(corresponding, template.relPath(self.basePath))
-                        self.addMissingFile(corresponding, t)
+                        self.addOldFile(corresponding, template.relPath(self.basePath))
+                        self.addNewFile(corresponding, t)
                     else:
-                        self.findMissingFiles(corresponding, t)
+                        self.findNewFiles(corresponding, t)
                 else:
                     if corresponding.isFile:
                         if corresponding.sha1 != t.sha1:  # 校验hash
                             # 先删除旧的再获取新的
-                            self.addUselessFile(corresponding, template.relPath(self.basePath))
-                            self.addMissingFile(corresponding, t)
+                            self.addOldFile(corresponding, template.relPath(self.basePath))
+                            self.addNewFile(corresponding, t)
                     else:
                         # 先删除旧的再获取新的
-                        self.addUselessFile(corresponding, template.relPath(self.basePath))
-                        self.addMissingFile(corresponding, t)
+                        self.addOldFile(corresponding, template.relPath(self.basePath))
+                        self.addNewFile(corresponding, t)
 
-    def findUselessFiles(self, current: SimpleFileObject, template: File):
+    def findOldFiles(self, current: SimpleFileObject, template: File):
         """只扫描需要删除的文件
         :param current: 远程文件结构(目录)
         :param template: 本地文件结构(目录)
@@ -157,12 +155,12 @@ class FileComparer2:
                 corresponding = template(c.name)
                 # 如果两边都是目录，递归并进一步判断
                 if c.isDirectory and corresponding.isDirectory:
-                    self.findUselessFiles(c, corresponding)
+                    self.findOldFiles(c, corresponding)
                 # 其它情况均由findMissingFiles进行处理了，这里不需要重复计算
             else:  # 如果远程端没有有这个文件，就直接删掉好了
-                self.addUselessFile(c, template.relPath(self.basePath))
+                self.addOldFile(c, template.relPath(self.basePath))
 
-    def addUselessFile(self, file: SimpleFileObject, dir: str):
+    def addOldFile(self, file: SimpleFileObject, dir: str):
         """添加需要删除的文件/目录
         :param file: 删除的文件(文件/目录)
         :param dir: file所在的目录(文件/目录)
@@ -173,16 +171,16 @@ class FileComparer2:
         if file.isDirectory:
             for u in file:
                 if u.isDirectory:
-                    self.addUselessFile(u, path)
+                    self.addOldFile(u, path)
                 else:
                     newPath = path + '/' + u.name
-                    self.uselessFiles += [newPath[2:] if newPath.startswith('./') else newPath]
+                    self.oldFiles += [newPath[2:] if newPath.startswith('./') else newPath]
 
-            self.uselessFolders += [pathWithoutDotSlash]
+            self.oldFolders += [pathWithoutDotSlash]
         else:
-            self.uselessFiles += [pathWithoutDotSlash]
+            self.oldFiles += [pathWithoutDotSlash]
 
-    def addMissingFile(self, missing: SimpleFileObject, template: File):
+    def addNewFile(self, missing: SimpleFileObject, template: File):
         """添加需要传输的文件
         :param missing: 缺失的文件对象(文件/目录)
         :param template: 对照模板(文件/目录)
@@ -190,32 +188,26 @@ class FileComparer2:
         """
 
         if missing.isDirectory != template.isDirectory:
-            assert False, 'the types do not equals'
+            assert False, 'the types did not equals'
 
         if missing.isDirectory:
             folder = template.parent.relPath(self.basePath)
-            if folder not in self.missingFolders and folder != '.':
-                self.missingFolders += [folder]
+            if folder not in self.newFolders and folder != '.':
+                self.newFolders += [folder]
             for m in missing:
                 mCorresponding = template(m.name)
                 if m.isDirectory:
-                    self.addMissingFile(m, mCorresponding)
+                    self.addNewFile(m, mCorresponding)
                 else:
-                    self.missingFiles[mCorresponding.relPath(self.basePath)] = [m.length, m.hash]
+                    self.newFiles[mCorresponding.relPath(self.basePath)] = [m.length, m.hash]
         else:
-            self.missingFiles[template.relPath(self.basePath)] = [template.length, template.sha1]
+            self.newFiles[template.relPath(self.basePath)] = [template.length, template.sha1]
 
-    @singledispatchmethod
-    def compareWith(self, anyObj):
-        raise RuntimeWarning('no method can be matched, it only receives types of Either SimpleFileObject or list')
+    def compareWithSimpleFileObject(self, current: File, template: SimpleFileObject):
+        self.findNewFiles(template, current)
+        self.findOldFiles(template, current)
 
-    @compareWith.register
-    def _(self, current: SimpleFileObject, template: File):
-        self.findMissingFiles(current, template)
-        self.findUselessFiles(current, template)
-
-    @compareWith.register
-    def _(self, current: list, template: File):
-        current2 = {'name': '', 'tree': current}
-        self.findMissingFiles(SimpleFileObject.FromDict(current2), template)
-        self.findUselessFiles(SimpleFileObject.FromDict(current2), template)
+    def compareWithList(self, current: File, template: list):
+        template2 = {'name': '', 'tree': template}
+        self.findNewFiles(SimpleFileObject.FromDict(template2), current)
+        self.findOldFiles(SimpleFileObject.FromDict(template2), current)
