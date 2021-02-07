@@ -1,6 +1,6 @@
 import sys
 
-productName = 'AutoDeployer'
+productName = 'Deployer'
 productVersion = '1.5'
 
 
