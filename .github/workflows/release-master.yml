@@ -1,0 +1,47 @@
+on:
+  push:
+    tags: 
+      - "*"
+
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+      - name: Prepare
+        run: tzutil /s "China Standard Time"
+        
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Load Cache
+        uses: actions/cache@v2
+        with: 
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+        
+      - name: Build
+        run: |
+          python -m pip install wheel setuptools
+          python -m pip install -r requirements.txt
+          python ci\generate_version_file.py
+          C:\hostedtoolcache\windows\Python\3.7.9\x64\Scripts\pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -c -F -n Deployer main.py
+          C:\hostedtoolcache\windows\Python\3.7.9\x64\Scripts\pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -w -F -n Deployer main.py
+          dir
+
+      - name: Print Hashes
+        run: |
+          python ci\version.py both
+          echo "---------------------------"
+          echo "MD5 for dist\Deployer.exe:"
+          python ci\sha1.py dist\Deployer.exe
+          echo "SHA1 for dist\Deployer.exe:"
+          python ci\md5.py dist\Deployer.exe
+      
+      - name: Upload To Github Release
+        uses: updater-for-minecraft/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        with:
+          file: dist/*
+          draft: false
+          tags: true        
