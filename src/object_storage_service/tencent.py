@@ -11,7 +11,7 @@ class TencentCOS(AbstractOssClient):
         secret_id = configs['secret_id']
         secret_key = configs['secret_key']
         region = configs['region']
-        bukkit = configs['bukkit']
+        bucket = configs['bucket']
 
         self.client = CosS3Client(CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key))
 
@@ -23,14 +23,14 @@ class TencentCOS(AbstractOssClient):
             pureName2 = path[:path.rfind('/')]
             pureName2 = pureName2[pureName2.rfind('/') + 1:]
             print(i + pureName2)
-            response = self.client.list_objects(Bucket=self.config['bukkit'], Delimiter='/', Prefix=path, Marker=marker)
+            response = self.client.list_objects(Bucket=self.config['bucket'], Delimiter='/', Prefix=path, Marker=marker)
 
             # 所有的文件
             if 'Contents' in response:
                 for file in response['Contents']:
                     temp = file['Key']
                     name = temp[temp.rfind('/') + 1:]
-                    headers = self.client.head_object(Bucket=self.config['bukkit'], Key=file['Key'])
+                    headers = self.client.head_object(Bucket=self.config['bucket'], Key=file['Key'])
                     hash = headers['x-cos-meta-updater-sha1'] if 'x-cos-meta-updater-sha1' in headers else ''
                     if len(name) == 0:
                         continue
@@ -61,7 +61,7 @@ class TencentCOS(AbstractOssClient):
 
     def fetchFragments(self):
         result = []
-        fragments = self.client.list_multipart_uploads(Bucket=self.config['bukkit'])
+        fragments = self.client.list_multipart_uploads(Bucket=self.config['bucket'])
         if 'Upload' in fragments:
             for f in fragments['Upload']:
                 result += [f['Key']]
@@ -69,11 +69,11 @@ class TencentCOS(AbstractOssClient):
 
     def deleteObjects(self, paths):
         objs = [{'Key': f} for f in paths]
-        self.client.delete_objects(Bucket=self.config['bukkit'], Delete={'Object': objs})
+        self.client.delete_objects(Bucket=self.config['bucket'], Delete={'Object': objs})
 
     def deleteDirectories(self, paths):
         objs = [{'Key': f + '/'} for f in paths]
-        self.client.delete_objects(Bucket=self.config['bukkit'], Delete={'Object': objs})
+        self.client.delete_objects(Bucket=self.config['bucket'], Delete={'Object': objs})
 
     def uploadObject(self, path, localPath):
         file = File(localPath)
@@ -81,7 +81,7 @@ class TencentCOS(AbstractOssClient):
             'x-cos-meta-updater-sha1': file.sha1,
             'x-cos-meta-updater-length': str(file.length)
         }
-        self.client.upload_file(Bucket=self.config['bukkit'], Key=path, LocalFilePath=localPath, MAXThread=4, Metadata=metadata)
+        self.client.upload_file(Bucket=self.config['bucket'], Key=path, LocalFilePath=localPath, MAXThread=4, Metadata=metadata)
 
     def getProviderName(self):
         return '腾讯云对象存储(COS)'

@@ -3,7 +3,7 @@ import sys
 import traceback
 
 import oss2
-from qcloud_cos import CosServiceError
+import qcloud_cos
 
 from src.constant import inDevelopment, serviceProviders
 from src.utilities.dir_hash import dir_hash
@@ -20,12 +20,10 @@ def printObj(obj):
 
 class Entry:
     def __init__(self):
+        filename = 'config.json'
+        self.configFile = File(sys.executable).parent(filename) if not inDevelopment else File(filename)
         self.config = None
         self.source = None
-
-    def loadConfig(self, file='config.json'):
-        f = File(sys.executable).parent(file) if not inDevelopment else File(file)
-        self.config = json.loads(f.content)
 
     def checkParam(self):
         if len(sys.argv) < 2 and not inDevelopment:
@@ -50,7 +48,7 @@ class Entry:
             provider = serviceProviders[providerName]
 
             params = {
-                'bukkit': self.config['bukkit'],
+                'bucket': self.config['bucket'],
                 'secret_id': self.config['secret_id'],
                 'secret_key': self.config['secret_key'],
                 'region': self.config['region'],
@@ -118,43 +116,33 @@ class Entry:
                     print(f'上传本地文件({count}/{len(cp.newFiles)}): {path}')
                     client.uploadObject(path, localFile.path)
         else:
-            raise NoServiceProviderFoundError('未知的服务提供商: '+providerName)
+            raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>')
 
     def main(self):
+        isHashMode = False
+
         try:
             self.checkParam()
-            self.loadConfig()
+
+            if self.configFile.exists:
+                self.config = json.loads(self.configFile.content)
+                serviceProvider = self.config['service_provider']
+                self.uploadingMode(serviceProvider)
+                isHashMode = False
+            else:
+                self.hashingMode()
+                isHashMode = True
+        except oss2.exceptions.OssError as e:
+            print(traceback.format_exc())
+            print('OSS异常(可能是配置信息不正确)')
+        except qcloud_cos.cos_exception.CosException as e:
+            print(traceback.format_exc())
+            print('COS异常(可能是配置信息不正确)')
+        except SystemExit:
+            pass
         except BaseException as e:
             print(e)
             print(traceback.format_exc())
 
-            if not inDevelopment:
-                input(f'任意键退出..')
-            else:
-                raise e
-
-        serviceProvider = self.config['service_provider']
-
-        if serviceProvider == '':
-            self.hashingMode()
-        else:
-            try:
-                self.uploadingMode(serviceProvider)
-            except oss2.exceptions.ServerError as e:
-                print(traceback.format_exc())
-                print('OSS异常(可能是配置信息不正确): ')
-                print(e.code)
-                print(e.message)
-            except CosServiceError as e:
-                print(traceback.format_exc())
-                print('COS异常(可能是配置信息不正确): ')
-                print(e.get_error_code())
-                print(e.get_error_msg())
-            except SystemExit:
-                pass
-            except BaseException as e:
-                print(e)
-                print(traceback.format_exc())
-
-            if not inDevelopment:
-                input(f'任意键退出..')
+        if not inDevelopment and not isHashMode:
+            input(f'任意键退出..')

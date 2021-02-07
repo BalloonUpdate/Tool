@@ -11,9 +11,9 @@ class AliyunOSS(AbstractOssClient):
         secret_id = configs['secret_id']
         secret_key = configs['secret_key']
         region = configs['region']
-        bukkit = configs['bukkit']
+        bucket = configs['bucket']
 
-        self.bucket = oss2.Bucket(oss2.Auth(secret_id, secret_key), region, bukkit)
+        self.bucket = oss2.Bucket(oss2.Auth(secret_id, secret_key), region, bucket)
 
         oss2.defaults.connection_pool_size = 4  # 设置最大并发数限制
 
