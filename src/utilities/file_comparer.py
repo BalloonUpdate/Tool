@@ -106,9 +106,15 @@ class SimpleFileObject:
 
 
 class FileComparer2:
-    def __init__(self, basePath: File):
+    def __init__(self, basePath: File, compareFunc=None):
         super().__init__()
         self.basePath = basePath
+
+        def defaultCompareFunc(remoteFile: SimpleFileObject, localRelPath: str, localAbsPath: str):
+            return remoteFile.sha1 == File(localAbsPath).sha1
+
+        self.compareFunc = compareFunc if compareFunc is not None else defaultCompareFunc
+
         self.oldFiles = []
         self.oldFolders = []
         self.newFiles = {}
@@ -135,7 +141,8 @@ class FileComparer2:
                         self.findNewFiles(corresponding, t)
                 else:
                     if corresponding.isFile:
-                        if corresponding.sha1 != t.sha1:  # 校验hash
+                        # if corresponding.sha1 != t.sha1:  # 校验hash
+                        if not self.compareFunc(corresponding, t.relPath(self.basePath), t.path):
                             # 先删除旧的再获取新的
                             self.addOldFile(corresponding, template.relPath(self.basePath))
                             self.addNewFile(corresponding, t)

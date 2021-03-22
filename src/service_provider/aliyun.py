@@ -1,19 +1,19 @@
 import oss2
 
 from src.utilities.file import File
-from src.object_storage_service.abstract_oss_client import AbstractOssClient
+from src.service_provider.abstract_service_provider import AbstractServiceProvider
 
 
-class AliyunOSS(AbstractOssClient):
-    def __init__(self, **configs):
-        super(AliyunOSS, self).__init__(**configs)
+class AliyunOSS(AbstractServiceProvider):
+    def __init__(self, config):
+        super(AliyunOSS, self).__init__(config)
 
-        secret_id = configs['secret_id']
-        secret_key = configs['secret_key']
-        region = configs['region']
-        bucket = configs['bucket']
+        access_id = config['access_id']
+        access_key = config['access_key']
+        region = config['region']
+        bucket = config['bucket_name']
 
-        self.bucket = oss2.Bucket(oss2.Auth(secret_id, secret_key), region, bucket)
+        self.bucket = oss2.Bucket(oss2.Auth(access_id, access_key), region, bucket)
 
         oss2.defaults.connection_pool_size = 4  # 设置最大并发数限制
 
@@ -70,7 +70,7 @@ class AliyunOSS(AbstractOssClient):
     def deleteDirectories(self, paths):
         self.bucket.batch_delete_objects([dir+'/' for dir in paths])
 
-    def uploadObject(self, path, localPath):
+    def uploadObject(self, path, localPath, length, hash):
         file = File(localPath)
         metadata = {
             'x-oss-meta-updater-sha1': file.sha1,

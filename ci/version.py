@@ -1,7 +1,7 @@
 import sys
 
 productName = 'Deployer'
-productVersion = '1.5.1'
+productVersion = '1.6'
 
 
 if __name__ == "__main__":

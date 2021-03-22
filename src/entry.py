@@ -6,12 +6,13 @@ import oss2
 import qcloud_cos
 
 from src.constant import inDevelopment, serviceProviders
+from src.exception.config_object_not_found import ConfigObjectNotFound
 from src.utilities.dir_hash import dir_hash
 from src.exception.no_service_provider_found import NoServiceProviderFoundError
 from src.exception.parameter_error import ParameterError
 from src.utilities.file import File
 from src.utilities.file_comparer import FileComparer2
-from src.object_storage_service.abstract_oss_client import AbstractOssClient
+from src.service_provider.abstract_service_provider import AbstractServiceProvider
 
 
 def printObj(obj):
@@ -29,7 +30,7 @@ class Entry:
         if len(sys.argv) < 2 and not inDevelopment:
             raise ParameterError(f'需要输入一个路径')
 
-        self.source = File(sys.argv[1]) if not inDevelopment else File(r'D:\hyperink\Desktop\root')
+        self.source = File(sys.argv[1]) if not inDevelopment else File(r'D:\aprilforest\Desktop\assets')
 
         if not self.source.exists:
             raise ParameterError(f'目录 {self.source.path} 找不到')
@@ -47,19 +48,18 @@ class Entry:
         if providerName in serviceProviders:
             provider = serviceProviders[providerName]
 
-            params = {
-                'bucket': self.config['bucket'],
-                'secret_id': self.config['secret_id'],
-                'secret_key': self.config['secret_key'],
-                'region': self.config['region'],
-            }
+            if providerName not in self.config:
+                raise ConfigObjectNotFound('config.json中找不到'+providerName+'对应的配置信息')
 
-            client: AbstractOssClient = provider(**params)
+            correspondingConfig = self.config[providerName]
+
+            client: AbstractServiceProvider = provider(correspondingConfig)
 
             print('上传到' + client.getProviderName())
+            client.initialize()
 
             # 生成本地目录校验文件
-            if not self.config['skip_hashing_before_uploading']:
+            if not self.config['upload_without_hashing']:
                 for f in [file for file in self.source if file.isDirectory]:
                     print(f'正在生成 {f.name}.json')
 
@@ -72,7 +72,7 @@ class Entry:
 
             # 计算文件差异
             print('正在计算文件差异..')
-            cp = FileComparer2(self.source)
+            cp = FileComparer2(self.source, client.compareFile)
             cp.compareWithList(self.source, remote)
 
             # 输出差异结果
@@ -114,7 +114,10 @@ class Entry:
 
                     count += 1
                     print(f'上传本地文件({count}/{len(cp.newFiles)}): {path}')
-                    client.uploadObject(path, localFile.path)
+                    client.uploadObject(path, localFile.path, length, hash)
+
+            # 清理退出
+            client.cleanup()
         else:
             raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>')
 
@@ -126,8 +129,7 @@ class Entry:
 
             if self.configFile.exists:
                 self.config = json.loads(self.configFile.content)
-                serviceProvider = self.config['service_provider']
-                self.uploadingMode(serviceProvider)
+                self.uploadingMode(self.config['service_provider'])
                 isHashMode = False
             else:
                 self.hashingMode()
