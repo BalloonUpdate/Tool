@@ -1,7 +1,7 @@
 on:
   push:
     tags: 
-      - "*"
+      - "v*"
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
           python -m pip install wheel setuptools
           python -m pip install -r requirements.txt
           python ci\generate_version_file.py
-          C:\hostedtoolcache\windows\Python\3.7.9\x64\Scripts\pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -F -c -n Deployer main.py
+          C:\hostedtoolcache\windows\Python\3.7.9\x64\Scripts\pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -F -c -n UtilityTool main.py
           Copy-Item config.exam.json dist\
           dir
 
@@ -32,10 +32,10 @@ jobs:
         run: |
           python ci\version.py both
           echo "---------------------------"
-          echo "MD5 for dist\Deployer.exe:"
-          python ci\sha1.py dist\Deployer.exe
-          echo "SHA1 for dist\Deployer.exe:"
-          python ci\md5.py dist\Deployer.exe
+          echo "MD5 for dist\UtilityTool.exe:"
+          python ci\sha1.py dist\UtilityTool.exe
+          echo "SHA1 for dist\UtilityTool.exe:"
+          python ci\md5.py dist\UtilityTool.exe
       
       - name: Upload To Github Release
         uses: updater-for-minecraft/upload-to-github-release@v1
