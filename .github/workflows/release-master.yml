@@ -38,7 +38,7 @@ jobs:
           python ci\md5.py dist\UtilityTool.exe
       
       - name: Upload To Github Release
-        uses: updater-for-minecraft/upload-to-github-release@v1
+        uses: xresloader/upload-to-github-release@v1.3.0
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
