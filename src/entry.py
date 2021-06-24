@@ -39,10 +39,12 @@ class Entry:
             raise ParameterError(f'需要输入一个"目录"的路径，{self.source.path} 却是一个文件!')
 
     def hashingMode(self):
-        print(f'正在生成 {self.source.name}.json')
+        for d in self.source:
+            if d.isDirectory:
+                print(f'正在生成 {d.name}.json')
 
-        content = json.dumps(dir_hash(self.source), ensure_ascii=False, indent=4)
-        self.source.parent(self.source.name + '.json').content = content
+                content = json.dumps(dir_hash(d), ensure_ascii=False, indent=4)
+                d.parent(d.name + '.json').content = content
 
     def uploadingMode(self, providerName):
         if providerName in serviceProviders:
