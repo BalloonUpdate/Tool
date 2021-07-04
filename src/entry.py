@@ -1,9 +1,9 @@
-import json
 import sys
 import traceback
 
 import oss2
 import qcloud_cos
+import yaml
 
 from src.constant import inDevelopment, serviceProviders
 from src.exception.config_object_not_found import ConfigObjectNotFound
@@ -16,12 +16,12 @@ from src.service_provider.abstract_service_provider import AbstractServiceProvid
 
 
 def printObj(obj):
-    print(json.dumps(obj, ensure_ascii=False, indent=4))
+    print(yaml.dump(obj))
 
 
 class Entry:
     def __init__(self):
-        filename = 'config.json'
+        filename = 'config.yml'
         self.configFile = File(sys.executable).parent(filename) if not inDevelopment else File(filename)
         self.config = None
         self.source = None
@@ -30,7 +30,7 @@ class Entry:
         if len(sys.argv) < 2 and not inDevelopment:
             raise ParameterError(f'需要输入一个路径')
 
-        self.source = File(sys.argv[1]) if not inDevelopment else File(r'D:\aprilforest\Desktop\assets')
+        self.source = File(sys.argv[1]) if not inDevelopment else File('fileToUpload')
 
         if not self.source.exists:
             raise ParameterError(f'目录 {self.source.path} 找不到')
@@ -41,17 +41,17 @@ class Entry:
     def hashingMode(self):
         for d in self.source:
             if d.isDirectory:
-                print(f'正在生成 {d.name}.json')
+                print(f'正在生成 {d.name}.yml')
 
-                content = json.dumps(dir_hash(d), ensure_ascii=False, indent=4)
-                d.parent(d.name + '.json').content = content
+                content = yaml.dump(dir_hash(d))
+                d.parent(d.name + '.yml').content = content
 
     def uploadingMode(self, providerName):
         if providerName in serviceProviders:
             provider = serviceProviders[providerName]
 
             if providerName not in self.config:
-                raise ConfigObjectNotFound('config.json中找不到'+providerName+'对应的配置信息')
+                raise ConfigObjectNotFound('config.yml中找不到'+providerName+'的对应配置信息')
 
             correspondingConfig = self.config[providerName]
 
@@ -61,12 +61,12 @@ class Entry:
             client.initialize()
 
             # 生成本地目录校验文件
-            if not self.config['upload_without_hashing']:
+            if 'upload_only' not in self.config or not self.config['upload_only']:
                 for f in [file for file in self.source if file.isDirectory]:
-                    print(f'正在生成 {f.name}.json')
+                    print(f'正在生成 {f.name}.yml')
 
-                    content = json.dumps(dir_hash(f), ensure_ascii=False, indent=4)
-                    f.parent(f.name + '.json').content = content
+                    content = yaml.dump(dir_hash(f))
+                    f.parent(f.name + '.yml').content = content
 
             # 获取远程文件目录
             print('正在获取远程文件目录..')
@@ -121,7 +121,7 @@ class Entry:
             # 清理退出
             client.cleanup()
         else:
-            raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>')
+            raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>, 可用值: '+str([k for k in serviceProviders.keys()]))
 
     def main(self):
         isHashMode = False
@@ -130,7 +130,7 @@ class Entry:
             self.checkParam()
 
             if self.configFile.exists:
-                self.config = json.loads(self.configFile.content)
+                self.config = yaml.safe_load(self.configFile.content)
                 self.uploadingMode(self.config['service_provider'])
                 isHashMode = False
             else:

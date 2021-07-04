@@ -131,3 +131,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 /ftp.cache.json
+/fileToUpload
+/config.yml

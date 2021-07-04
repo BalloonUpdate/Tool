@@ -13,6 +13,6 @@ def dir_hash(dir: File):
         if f.isDirectory:
             structure.append({
                 'name': f.name,
-                'tree': dir_hash(f)
+                'children': dir_hash(f)
             })
     return structure

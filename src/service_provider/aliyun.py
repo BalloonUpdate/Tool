@@ -11,7 +11,7 @@ class AliyunOSS(AbstractServiceProvider):
         access_id = config['access_id']
         access_key = config['access_key']
         region = config['region']
-        bucket = config['bucket_name']
+        bucket = config['bucket']
 
         self.bucket = oss2.Bucket(oss2.Auth(access_id, access_key), region, bucket)
 
@@ -49,7 +49,7 @@ class AliyunOSS(AbstractServiceProvider):
             # print(i+'D: '+D[0])
             directory.append({
                 'name': D[0],
-                'tree': self.fetchDirectory(D[1], i + '    ')
+                'children': self.fetchDirectory(D[1], i + '    ')
             })
 
         return directory

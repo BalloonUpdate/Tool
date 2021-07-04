@@ -11,7 +11,7 @@ class TencentCOS(AbstractServiceProvider):
         secret_id = config['secret_id']
         secret_key = config['secret_key']
         region = config['region']
-        self.bucket = config['bucket_name']
+        self.bucket = config['bucket']
 
         self.client = CosS3Client(CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key))
 
@@ -47,7 +47,7 @@ class TencentCOS(AbstractServiceProvider):
                     pureName = temp[temp.rfind('/') + 1:]
                     structure.append({
                         'name': pureName,
-                        'tree': self.fetchDirectory(folder['Prefix'], i + '    ')
+                        'children': self.fetchDirectory(folder['Prefix'], i + '    ')
                     })
 
             if response['IsTruncated'] == 'false':

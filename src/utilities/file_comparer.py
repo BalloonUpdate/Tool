@@ -24,8 +24,8 @@ class SimpleFileObject:
 
     @staticmethod
     def FromDict(obj: dict):
-        if 'tree' in obj:
-            children = [SimpleFileObject.FromDict(f) for f in obj['tree']]
+        if 'children' in obj:
+            children = [SimpleFileObject.FromDict(f) for f in obj['children']]
             return SimpleFileObject(obj['name'], children=children)
         else:
             return SimpleFileObject(obj['name'], length=obj['length'], hash=obj['hash'])
@@ -215,6 +215,6 @@ class FileComparer2:
         self.findOldFiles(template, current)
 
     def compareWithList(self, current: File, template: list):
-        template2 = {'name': '', 'tree': template}
+        template2 = {'name': '', 'children': template}
         self.findNewFiles(SimpleFileObject.FromDict(template2), current)
         self.findOldFiles(SimpleFileObject.FromDict(template2), current)

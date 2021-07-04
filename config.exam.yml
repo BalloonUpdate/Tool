@@ -1,0 +1,21 @@
+upload_only: false
+service_provider: tencent
+tencent:
+  bucket: 
+  secret_id: 
+  secret_key: 
+  region: ap-nanjing
+aliyun:
+  bucket: 
+  access_id: 
+  access_key: 
+  region: oss-cn-chengdu.aliyuncs.com
+ftp:
+  host: 127.0.0.1
+  port: 21
+  user: ab
+  password: ab
+  base_path: /
+  timezone_offset: 8
+  secure: true
+  prot_p: false

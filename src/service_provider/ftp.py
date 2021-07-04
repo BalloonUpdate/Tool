@@ -120,7 +120,7 @@ class Ftp(AbstractServiceProvider):
 
             for child in current:
                 if child['name'] == name:
-                    current = child['tree']
+                    current = child['children']
                     break
 
         if current is None:
@@ -166,7 +166,7 @@ class Ftp(AbstractServiceProvider):
                 prefix = (path+'/') if path != '' else ''
                 result += [{
                     'name': filename,
-                    'tree': self.fetchDirectory(prefix+filename, i + '    ')
+                    'children': self.fetchDirectory(prefix+filename, i + '    ')
                 }]
 
         return result
