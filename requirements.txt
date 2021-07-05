@@ -9,7 +9,7 @@ crcmod==1.7
 cryptography==3.4.7
 dicttoxml==1.7.4
 future==0.18.2
-idna==3.2
+idna==2.10
 importlib-metadata==4.6.0
 jmespath==0.10.0
 oss2==2.14.0
