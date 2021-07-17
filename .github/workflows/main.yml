@@ -15,8 +15,21 @@ jobs:
         with: 
           path: .\venv
           key: ${{ hashFiles('**/requirements.txt') }}
-        
+      
+      - name: Check Out Tag-Name
+        id: checkout-tagname
+        shell: "python3 {0}"
+        run: |
+          import os
+          import re
+          ref = os.getenv('GITHUB_REF', '')
+          match = re.search(r'refs\/tags\/(.*)', ref)
+          tag_name = match[1] if match is not None else ''
+          print('::set-output name=tag_name::'+tag_name)
+
       - name: Build
+        env: 
+          tag_name: ${{ steps.checkout-tagname.outputs.tag_name }}
         run: |
           tzutil /s "China Standard Time"
           python -m pip install wheel setuptools virtualenv
@@ -25,20 +38,14 @@ jobs:
           pip install -r requirements.txt
           
           python ci\generate_version_file.py
-          pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -F -c -n Tool main.py
+          pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -F -c -n Tool-${{ env.tag_name }} main.py
           copy config.exam.yml dist\config.yml
-          
-          dir
-          dir dist
 
       - name: Print Hashes
+        env: 
+          tag_name: ${{ steps.checkout-tagname.outputs.tag_name }}
         run: |
-          python ci\version.py both
-          echo "---------------------------"
-          echo "MD5 for dist\Tool.exe:"
-          python ci\sha1.py dist\Tool.exe
-          echo "SHA1 for dist\Tool.exe:"
-          python ci\md5.py dist\Tool.exe
+          python ci\hash_tool.py dist\Tool-${{ env.tag_name }}.exe
       
       - name: Upload To Github Release
         uses: xresloader/upload-to-github-release@98857380fc282f8075a62c6af230fe92bd93aff8

@@ -1,8 +1,7 @@
 if __name__ == "__main__":
-    from file import File
     from version import productName, productVersion
 
-    output = File('version-file.txt')
+    output = 'version-file.txt'
 
     template = f'''# UTF-8
 #
@@ -55,5 +54,5 @@ VSVersionInfo(
 )
 '''
 
-    with open(output.path, "w+", encoding="utf-8") as f:
+    with open(output, "w+", encoding="utf-8") as f:
         f.write(template)

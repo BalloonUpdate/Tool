@@ -5,8 +5,8 @@ import ssl
 import time
 from ftplib import FTP, FTP_TLS
 
-from ci.file import File
 from src.service_provider.abstract_service_provider import AbstractServiceProvider
+from src.utilities.file import File
 from src.utilities.file_comparer import SimpleFileObject
 from src.utilities.glue import glue
 
