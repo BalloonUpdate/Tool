@@ -1,21 +1,23 @@
+import re
+
 import oss2
 
 from src.utilities.file import File
-from src.service_provider.abstract_service_provider import AbstractServiceProvider
+from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
 
 
 class AliyunOSS(AbstractServiceProvider):
-    def __init__(self, config):
-        super(AliyunOSS, self).__init__(config)
+    def __init__(self, uploadTool, config):
+        super(AliyunOSS, self).__init__(uploadTool, config)
 
         access_id = config['access_id']
         access_key = config['access_key']
         region = config['region']
         bucket = config['bucket']
-
         self.bucket = oss2.Bucket(oss2.Auth(access_id, access_key), region, bucket)
-
         oss2.defaults.connection_pool_size = 4  # 设置最大并发数限制
+
+        self.headerRules = config['header_rules'] if 'header_rules' in config else []
 
     def fetchDirectory(self, path='', i=''):
         directory = []
@@ -38,7 +40,7 @@ class AliyunOSS(AbstractServiceProvider):
                 pureName = obj.key[obj.key.rfind('/') + 1:]
                 # print(i + 'f: ' + pureName)
                 headers = self.bucket.head_object(obj.key).headers
-                hash = headers['x-oss-meta-updater-sha1'] if 'x-oss-meta-updater-sha1' in headers else ''
+                hash = headers['x-oss-meta-hash'] if 'x-oss-meta-hash' in headers else ''
                 directory.append({
                     'name': pureName,
                     'length': headers['Content-Length'],
@@ -68,15 +70,28 @@ class AliyunOSS(AbstractServiceProvider):
         self.bucket.batch_delete_objects(paths)
 
     def deleteDirectories(self, paths):
-        self.bucket.batch_delete_objects([dir+'/' for dir in paths])
+        self.bucket.batch_delete_objects([dir + '/' for dir in paths])
 
-    def uploadObject(self, path, localPath, length, hash):
+    def uploadObject(self, path, localPath, baseDir, length, hash):
         file = File(localPath)
-        metadata = {
-            'x-oss-meta-updater-sha1': file.sha1,
-            'x-oss-meta-updater-length': str(file.length)
-        }
-        oss2.resumable_upload(self.bucket, path, localPath, num_threads=4, headers=metadata)
+        headers = {'x-oss-meta-hash': file.sha1, **self.getHeaders(file.relPath(baseDir))}
+
+        if self.uploadTool.debugMode:
+            print(headers)
+
+        oss2.resumable_upload(self.bucket, path, localPath, num_threads=4, headers=headers)
 
     def getProviderName(self):
         return '阿里云对象存储服务(OSS)'
+
+    def getHeaders(self, path):
+        headers = {}
+
+        if isinstance(self.headerRules, list):
+            for rule in self.headerRules:
+                pattern = rule['pattern']
+                hds = rule['headers']
+                if re.search(pattern, path) is not None:
+                    headers.update(hds)
+
+        return headers

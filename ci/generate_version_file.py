@@ -1,9 +1,16 @@
 if __name__ == "__main__":
-    from version import productName, productVersion
+    import sys
 
-    output = 'version-file.txt'
+    if len(sys.argv) < 4:
+        print('productName, productVersion, versionfileName are required to be passed.')
+        sys.exit(1)
 
-    template = f'''# UTF-8
+    productName = sys.argv[1]
+    productVersion = sys.argv[2]
+    output = sys.argv[3]
+
+    template = f'''
+# UTF-8
 #
 # For more details about fixed file info 'ffi' see:
 # http://msdn.microsoft.com/en-us/library/ms646997.aspx

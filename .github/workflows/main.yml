@@ -36,9 +36,8 @@ jobs:
           python -m virtualenv venv
           venv\Scripts\activate
           pip install -r requirements.txt
-          
-          python ci\generate_version_file.py
-          pyinstaller --noconfirm --version-file version-file.txt -i icon.ico -F -c -n Tool-${{ env.tag_name }} main.py
+
+          pyinstaller --noconfirm -i icon.ico -c -F -n Tool src/Tool-${{ env.tag_name }}.py
           copy config.exam.yml dist\config.yml
 
       - name: Print Hashes

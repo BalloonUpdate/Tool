@@ -5,7 +5,7 @@ import ssl
 import time
 from ftplib import FTP, FTP_TLS
 
-from src.service_provider.abstract_service_provider import AbstractServiceProvider
+from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
 from src.utilities.file import File
 from src.utilities.file_comparer import SimpleFileObject
 from src.utilities.glue import glue
@@ -89,8 +89,8 @@ class FtpClient:
 
 
 class Ftp(AbstractServiceProvider):
-    def __init__(self, config):
-        super(Ftp, self).__init__(config)
+    def __init__(self, uploadTool, config):
+        super(Ftp, self).__init__(uploadTool, config)
 
         self.cacheFile = File('ftp.cache.json')
         self.cache = json.loads(self.cacheFile.content) if self.cacheFile.exists else []
@@ -187,7 +187,7 @@ class Ftp(AbstractServiceProvider):
             self.ftp.deleteDirectory(self.basePath + f)
             # print('delete directory: /' + f)
 
-    def uploadObject(self, path, localPath, length, hash):
+    def uploadObject(self, path, localPath, baseDir, length, hash):
         localFile = File(localPath)
 
         # check whether directory exists

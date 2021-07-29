@@ -1,21 +1,57 @@
+# 是否在上传时显示调试数据
+debug: false
+
+# 是否跳过生成校验文件阶段
 upload_only: false
+
+# 上传到哪里？
 service_provider: tencent
+
+# 上传完成后，是否不自动退出
+show_any_key_to_exit: false
+
+# 腾讯云对象存储
 tencent:
   bucket: 
   secret_id: 
   secret_key: 
   region: ap-nanjing
+
+  # 自动设置http headers
+  header_rules:
+    # 正则表达式(按相对路径匹配，此路径不包含要上传的文件夹本身)
+    - pattern: '.gz$'
+    # 添加的http headers
+      headers:
+        Content-Encoding: gzip
+
+# 阿里云对象存储
 aliyun:
   bucket: 
   access_id: 
   access_key: 
   region: oss-cn-chengdu.aliyuncs.com
+
+  # 自动设置http headers
+  header_rules:
+    # 正则表达式(按相对路径匹配，此路径不包含要上传的文件夹本身)
+    - pattern: '.gz$'
+    # 添加的http headers
+      headers:
+        Content-Encoding: gzip
+
+# FTP/SFTP
 ftp:
   host: 127.0.0.1
   port: 21
   user: ab
   password: ab
+  # 上传到哪个路径，支持子目录，默认根目录，必须以/结尾
   base_path: /
+  # 时区偏移，仅在服务器返回的时区不正确时使用
+  # 如果一直出现增量上传失效请尝试设置为8（中国为东八区）
   timezone_offset: 8
+  # 启用TLS加密（SFTP）
   secure: true
+  # 高级参数，登录后是否立即发送prot_p命令
   prot_p: false

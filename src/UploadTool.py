@@ -1,3 +1,4 @@
+import os
 import sys
 import traceback
 
@@ -5,26 +6,36 @@ import oss2
 import qcloud_cos
 import yaml
 
-from src.constant import inDevelopment, serviceProviders
-from src.exception.config_object_not_found import ConfigObjectNotFound
+from src.constant import inDevelopment, version
+from src.exception.ConfigObjectNotFound import ConfigObjectNotFound
+from src.service_provider.AliyunOSS import AliyunOSS
+from src.service_provider.FTP import Ftp
+from src.service_provider.TencentCOS import TencentCOS
 from src.utilities.dir_hash import dir_hash
-from src.exception.no_service_provider_found import NoServiceProviderFoundError
-from src.exception.parameter_error import ParameterError
+from src.exception.NoServiceProviderFoundError import NoServiceProviderFoundError
+from src.exception.ParameterError import ParameterError
 from src.utilities.file import File
 from src.utilities.file_comparer import FileComparer2
-from src.service_provider.abstract_service_provider import AbstractServiceProvider
+from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
 
 
 def printObj(obj):
     print(yaml.dump(obj))
 
 
-class Entry:
+class UploadTool:
+    serviceProviders = {
+        'tencent': TencentCOS,
+        'aliyun': AliyunOSS,
+        'ftp': Ftp
+    }
+
     def __init__(self):
         filename = 'config.yml'
         self.configFile = File(sys.executable).parent(filename) if not inDevelopment else File(filename)
         self.config = None
         self.source = None
+        self.debugMode = False
 
     def checkParam(self):
         if len(sys.argv) < 2 and not inDevelopment:
@@ -47,15 +58,15 @@ class Entry:
                 d.parent(d.name + '.yml').content = content
 
     def uploadingMode(self, providerName):
-        if providerName in serviceProviders:
-            provider = serviceProviders[providerName]
+        if providerName in self.serviceProviders:
+            provider = self.serviceProviders[providerName]
 
             if providerName not in self.config:
                 raise ConfigObjectNotFound('config.yml中找不到'+providerName+'的对应配置信息')
 
             correspondingConfig = self.config[providerName]
 
-            client: AbstractServiceProvider = provider(correspondingConfig)
+            client: AbstractServiceProvider = provider(self, correspondingConfig)
 
             print('上传到' + client.getProviderName())
             client.initialize()
@@ -116,21 +127,26 @@ class Entry:
 
                     count += 1
                     print(f'上传本地文件({count}/{len(cp.newFiles)}): {path}')
-                    client.uploadObject(path, localFile.path, length, hash)
+                    client.uploadObject(path, localFile.path, self.source.path, length, hash)
 
             # 清理退出
             client.cleanup()
         else:
-            raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>, 可用值: '+str([k for k in serviceProviders.keys()]))
+            raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>, 可用值: '+str([k for k in self.serviceProviders.keys()]))
 
     def main(self):
         isHashMode = False
+
+        print('UploadTool v'+version)
 
         try:
             self.checkParam()
 
             if self.configFile.exists:
                 self.config = yaml.safe_load(self.configFile.content)
+
+                self.debugMode = self.config['debug'] if 'debug' in self.config else False
+
                 self.uploadingMode(self.config['service_provider'])
                 isHashMode = False
             else:
@@ -149,4 +165,12 @@ class Entry:
             print(traceback.format_exc())
 
         if not inDevelopment and not isHashMode:
-            input(f'任意键退出..')
+            if 'show_any_key_to_exit' in self.config and self.config['show_any_key_to_exit']:
+                input(f'任意键退出..')
+
+
+if __name__ == "__main__":
+    if inDevelopment:
+        os.chdir('../')
+    ul = UploadTool()
+    ul.main()

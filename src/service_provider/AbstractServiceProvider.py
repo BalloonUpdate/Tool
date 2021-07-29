@@ -5,7 +5,8 @@ from src.utilities.file_comparer import SimpleFileObject
 
 
 class AbstractServiceProvider(ABC):
-    def __init__(self, config):
+    def __init__(self, uploadTool, config):
+        self.uploadTool = uploadTool
         self.config = config
 
     def initialize(self):
@@ -28,7 +29,7 @@ class AbstractServiceProvider(ABC):
         pass
 
     @abstractmethod
-    def uploadObject(self, path, localPath, length, hash):
+    def uploadObject(self, path, localPath, baseDir, length, hash):
         pass
 
     def compareFile(self, remoteFile: SimpleFileObject, localRelPath: str, localAbsPath: str):
