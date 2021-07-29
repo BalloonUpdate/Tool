@@ -71,8 +71,16 @@ class TencentCOS(AbstractServiceProvider):
         return result
 
     def deleteObjects(self, paths):
-        objs = [{'Key': f} for f in paths]
-        self.client.delete_objects(Bucket=self.bucket, Delete={'Object': objs})
+        def del_(paths_):
+            objs = [{'Key': f} for f in paths_]
+            self.client.delete_objects(Bucket=self.bucket, Delete={'Object': objs})
+
+        paths_ = paths[:]
+        while len(paths_) > 999:
+            del_(paths_[:999])
+            paths_ = paths_[999:]
+        if len(paths_) > 0:
+            del_(paths_)
 
     def deleteDirectories(self, paths):
         objs = [{'Key': f + '/'} for f in paths]
@@ -87,7 +95,7 @@ class TencentCOS(AbstractServiceProvider):
 
         self.client.upload_file(Bucket=self.bucket, Key=path, LocalFilePath=localPath, MAXThread=4, Metadata=headers)
 
-    def getProviderName(self):
+    def getName(self):
         return '腾讯云对象存储(COS)'
 
     def getHeaders(self, path):

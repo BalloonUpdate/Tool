@@ -1,5 +1,7 @@
 on:
   push:
+    branches:
+      - main
     tags: 
       - "v*"
 
@@ -10,11 +12,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       
-      - name: Load Cache
-        uses: actions/cache@v2
-        with: 
-          path: .\venv
-          key: ${{ hashFiles('**/requirements.txt') }}
+#      - name: Load Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: .\venv
+#          key: ${{ hashFiles('**/requirements.txt') }}
       
       - name: Check Out Tag-Name
         id: checkout-tagname
@@ -37,7 +39,7 @@ jobs:
           venv\Scripts\activate
           pip install -r requirements.txt
 
-          pyinstaller --noconfirm -i icon.ico -c -F -n Tool src/Tool-${{ env.tag_name }}.py
+          pyinstaller --noconfirm -i icon.ico -c -F -n Tool-${{ env.tag_name }} UploadToolMain.py
           copy config.exam.yml dist\config.yml
 
       - name: Print Hashes
@@ -53,4 +55,4 @@ jobs:
         with:
           file: dist/*
           draft: false
-          tags: true        
+          tags: false

@@ -3,7 +3,7 @@ import json
 import os
 import ssl
 import time
-from ftplib import FTP, FTP_TLS
+from ftplib import FTP as _FTP, FTP_TLS
 
 from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
 from src.utilities.file import File
@@ -27,7 +27,7 @@ class FtpClient:
 
             self.ftp = FTP_TLS(context=context)
         else:
-            self.ftp = FTP()
+            self.ftp = _FTP()
         self.ftp.encoding = "utf-8"
 
     def open(self, timeout=5000):
@@ -238,5 +238,5 @@ class Ftp(AbstractServiceProvider):
 
         self.ftp.close()
 
-    def getProviderName(self):
+    def getName(self):
         return 'FTP '+self.host+':'+str(self.port)

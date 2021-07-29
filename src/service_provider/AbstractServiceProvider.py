@@ -39,5 +39,6 @@ class AbstractServiceProvider(ABC):
         pass
 
     @abstractmethod
-    def getProviderName(self):
+    def getName(self):
         pass
+

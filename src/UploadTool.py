@@ -1,4 +1,3 @@
-import os
 import sys
 import traceback
 
@@ -9,7 +8,7 @@ import yaml
 from src.constant import inDevelopment, version
 from src.exception.ConfigObjectNotFound import ConfigObjectNotFound
 from src.service_provider.AliyunOSS import AliyunOSS
-from src.service_provider.FTP import Ftp
+from src.service_provider.Ftp import Ftp
 from src.service_provider.TencentCOS import TencentCOS
 from src.utilities.dir_hash import dir_hash
 from src.exception.NoServiceProviderFoundError import NoServiceProviderFoundError
@@ -68,7 +67,7 @@ class UploadTool:
 
             client: AbstractServiceProvider = provider(self, correspondingConfig)
 
-            print('上传到' + client.getProviderName())
+            print('上传到' + client.getName())
             client.initialize()
 
             # 生成本地目录校验文件
@@ -164,13 +163,11 @@ class UploadTool:
             print(e)
             print(traceback.format_exc())
 
-        if not inDevelopment and not isHashMode:
-            if 'show_any_key_to_exit' in self.config and self.config['show_any_key_to_exit']:
-                input(f'任意键退出..')
+        # if not inDevelopment and not isHashMode and self.config is not None:
+        #     if 'show_any_key_to_exit' in self.config and self.config['show_any_key_to_exit']:
+        if not inDevelopment and not isHashMode and self.config is not None:
+            if 'show_any_key_to_exit' in self.config:
+                if self.config['show_any_key_to_exit']:
+                    input(f'任意键退出..')
 
 
-if __name__ == "__main__":
-    if inDevelopment:
-        os.chdir('../')
-    ul = UploadTool()
-    ul.main()

@@ -67,7 +67,15 @@ class AliyunOSS(AbstractServiceProvider):
         return result
 
     def deleteObjects(self, paths):
-        self.bucket.batch_delete_objects(paths)
+        def del_(paths_):
+            self.bucket.batch_delete_objects(paths_)
+
+        paths_ = paths[:]
+        while len(paths_) > 999:
+            del_(paths_[:999])
+            paths_ = paths_[999:]
+        if len(paths_) > 0:
+            del_(paths_)
 
     def deleteDirectories(self, paths):
         self.bucket.batch_delete_objects([dir + '/' for dir in paths])
@@ -81,7 +89,7 @@ class AliyunOSS(AbstractServiceProvider):
 
         oss2.resumable_upload(self.bucket, path, localPath, num_threads=4, headers=headers)
 
-    def getProviderName(self):
+    def getName(self):
         return '阿里云对象存储服务(OSS)'
 
     def getHeaders(self, path):
