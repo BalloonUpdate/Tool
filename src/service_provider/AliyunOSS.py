@@ -14,7 +14,7 @@ class AliyunOSS(AbstractServiceProvider):
         super(AliyunOSS, self).__init__(uploadTool, config)
 
         self.cache = []  # 缓存的远程文件结构
-        self.uploaded = False  # 是否有过上传行为
+        self.modified = False  # 是否有过上传行为
         self.rootDir: File = None  # 本地根目录
 
         access_id = config['access_id']
@@ -100,9 +100,11 @@ class AliyunOSS(AbstractServiceProvider):
             paths_ = paths_[999:]
         if len(paths_) > 0:
             del_(paths_)
+        self.modified = True
 
     def deleteDirectories(self, paths):
         self.bucket.batch_delete_objects([dir + '/' for dir in paths])
+        self.modified = True
 
     def uploadObject(self, path, localPath, baseDir, length, hash):
         file = File(localPath)
@@ -113,7 +115,7 @@ class AliyunOSS(AbstractServiceProvider):
             print(headers)
 
         oss2.resumable_upload(self.bucket, path, localPath, num_threads=4, headers=headers)
-        self.uploaded = True
+        self.modified = True
 
     def downloadObject(self, path):
         buf = BufferedRandom(BytesIO())
@@ -125,14 +127,14 @@ class AliyunOSS(AbstractServiceProvider):
     def makeDirectory(self, path):
         if not self.exists(path):
             self.bucket.put_object(key=path+'/', data='')
-        self.uploaded = True
+        self.modified = True
 
     def exists(self, path):
         return self.bucket.object_exists(path)
 
     def cleanup(self):
         # 实际上传文件之后，需要更新缓存文件
-        if self.uploaded:
+        if self.modified:
             print('正在更新缓存...')
             cache = dir_hash(self.rootDir)
 

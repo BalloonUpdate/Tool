@@ -149,7 +149,7 @@ class Ftp(AbstractServiceProvider):
         super(Ftp, self).__init__(uploadTool, config)
 
         self.cache = []  # 缓存的远程文件结构
-        self.uploaded = False  # 是否有过上传行为
+        self.modified = False  # 是否有过上传行为
         self.rootDir: File = None  # 本地根目录
 
         self.host = config['host']
@@ -205,10 +205,12 @@ class Ftp(AbstractServiceProvider):
     def deleteObjects(self, paths):
         for f in paths:
             self.ftp.deleteFile(self.basePath + f)
+        self.modified = True
 
     def deleteDirectories(self, paths):
         for f in paths:
             self.ftp.deleteDirectory(self.basePath + f)
+        self.modified = True
 
     def uploadObject(self, path, localPath, baseDir, length, hash):
         localFile = File(localPath)
@@ -229,16 +231,16 @@ class Ftp(AbstractServiceProvider):
                 self.ftp.mkdir(self.basePath + child)
 
         self.ftp.uploadFile(localFile, self.basePath + path)
-        self.uploaded = True
+        self.modified = True
 
     def makeDirectory(self, path):
         if not self.ftp.exists(self.basePath + path):
             self.ftp.mkdir(self.basePath + path)
-        self.uploaded = True
+        self.modified = True
 
     def cleanup(self):
         # 实际上传文件之后，需要更新缓存文件
-        if self.uploaded:
+        if self.modified:
             print('正在更新缓存...')
             cache = dir_hash(self.rootDir)
 

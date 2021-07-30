@@ -14,7 +14,7 @@ class TencentCOS(AbstractServiceProvider):
         super(TencentCOS, self).__init__(uploadTool, config)
 
         self.cache = []  # 缓存的远程文件结构
-        self.uploaded = False  # 是否有过上传行为
+        self.modified = False  # 是否有过上传行为
         self.rootDir: File = None  # 本地根目录
 
         secret_id = config['secret_id']
@@ -104,10 +104,12 @@ class TencentCOS(AbstractServiceProvider):
             paths_ = paths_[999:]
         if len(paths_) > 0:
             del_(paths_)
+        self.modified = True
 
     def deleteDirectories(self, paths):
         objs = [{'Key': f + '/'} for f in paths]
         self.client.delete_objects(Bucket=self.bucket, Delete={'Object': objs})
+        self.modified = True
 
     def uploadObject(self, path, localPath, baseDir, length, hash):
         file = File(localPath)
@@ -118,7 +120,7 @@ class TencentCOS(AbstractServiceProvider):
             print(headers)
 
         self.client.upload_file(Bucket=self.bucket, Key=path, LocalFilePath=localPath, MAXThread=4, Metadata=headers)
-        self.uploaded = True
+        self.modified = True
 
     def downloadObject(self, path):
         buf = BufferedRandom(BytesIO())
@@ -131,7 +133,7 @@ class TencentCOS(AbstractServiceProvider):
     def makeDirectory(self, path):
         if not self.exists(path):
             self.client.put_object(Bucket=self.bucket, Key=path+'/', Body='')
-        self.uploaded = True
+        self.modified = True
 
     def exists(self, path):
         try:
@@ -144,7 +146,7 @@ class TencentCOS(AbstractServiceProvider):
 
     def cleanup(self):
         # 实际上传文件之后，需要更新缓存文件
-        if self.uploaded:
+        if self.modified:
             print('正在更新缓存...')
             cache = dir_hash(self.rootDir)
 
