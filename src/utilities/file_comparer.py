@@ -195,7 +195,7 @@ class FileComparer2:
         """
 
         if missing.isDirectory != template.isDirectory:
-            assert False, 'the types did not equals'
+            assert False, 'the types did not equal'
 
         if missing.isDirectory:
             folder = template.parent.relPath(self.basePath)
