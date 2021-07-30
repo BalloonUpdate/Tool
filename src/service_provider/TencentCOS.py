@@ -1,7 +1,10 @@
 import re
+from io import BufferedRandom, BytesIO
 
-from qcloud_cos import CosS3Client, CosConfig
+import yaml
+from qcloud_cos import CosS3Client, CosConfig, CosServiceError
 
+from src.utilities.dir_hash import dir_hash
 from src.utilities.file import File
 from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
 
@@ -10,13 +13,21 @@ class TencentCOS(AbstractServiceProvider):
     def __init__(self, uploadTool, config):
         super(TencentCOS, self).__init__(uploadTool, config)
 
+        self.cache = []  # 缓存的远程文件结构
+        self.uploaded = False  # 是否有过上传行为
+        self.rootDir: File = None  # 本地根目录
+
         secret_id = config['secret_id']
         secret_key = config['secret_key']
         region = config['region']
         self.bucket = config['bucket']
         self.client = CosS3Client(CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key))
 
+        self.cacheFileName = config['cache_file']
         self.headerRules = config['header_rules'] if 'header_rules' in config else []
+
+    def initialize(self, rootDir: File):
+        self.rootDir = rootDir
 
     def fetchDirectory(self, path='', i=''):
         structure = []
@@ -33,14 +44,21 @@ class TencentCOS(AbstractServiceProvider):
                 for file in response['Contents']:
                     temp = file['Key']
                     name = temp[temp.rfind('/') + 1:]
-                    headers = self.client.head_object(Bucket=self.bucket, Key=file['Key'])
-                    hash = headers['x-oss-meta-hash'] if 'x-oss-meta-hash' in headers else ''
+
+                    # 因为本地没有缓存文件，所以用不上这段代码
+                    # if path + name == '/' + self.cacheFileName:
+                    #     continue
+
+                    # headers = self.client.head_object(Bucket=self.bucket, Key=file['Key'])
+                    # hash = headers['x-oss-meta-hash'] if 'x-oss-meta-hash' in headers else ''
                     if len(name) == 0:
                         continue
                     structure.append({
                         'name': name,
-                        'length': file['Size'],
-                        'hash': hash
+                        'length': 0,
+                        'hash': ''
+                        # 'length': file['Size'],
+                        # 'hash': hash
                     })
 
             # 所有的目录
@@ -60,7 +78,10 @@ class TencentCOS(AbstractServiceProvider):
         return structure
 
     def fetchAll(self):
-        print(self.downloadObject('z/index.html').read())
+        if self.exists(self.cacheFileName):
+            self.cache = yaml.safe_load(self.downloadObject(self.cacheFileName).read())
+            print('缓存已找到 ' + self.cacheFileName)
+            return self.cache
 
         return self.fetchDirectory()
 
@@ -90,12 +111,45 @@ class TencentCOS(AbstractServiceProvider):
 
     def uploadObject(self, path, localPath, baseDir, length, hash):
         file = File(localPath)
-        headers = {'x-oss-meta-hash': file.sha1, **self.getHeaders(file.relPath(baseDir))}
+        # headers = {'x-oss-meta-hash': file.sha1, **self.getHeaders(file.relPath(baseDir))}
+        headers = self.getHeaders(file.relPath(baseDir))
 
-        if self.uploadTool.debugMode:
+        if self.uploadTool.debugMode and len(headers) > 0:
             print(headers)
 
         self.client.upload_file(Bucket=self.bucket, Key=path, LocalFilePath=localPath, MAXThread=4, Metadata=headers)
+        self.uploaded = True
+
+    def downloadObject(self, path):
+        buf = BufferedRandom(BytesIO())
+        response = self.client.get_object(Bucket=self.bucket, Key=path)
+        for chunk in response['Body'].get_raw_stream().stream(4 * 1024):
+            buf.write(chunk)
+        buf.seek(0)
+        return buf
+
+    def exists(self, path):
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=path)
+            return True
+        except CosServiceError as e:
+            if e.get_error_code() == 'NoSuchResource':
+                return False
+            raise e
+
+    def cleanup(self):
+        # 实际上传文件之后，需要更新缓存文件
+        if self.uploaded:
+            print('正在更新缓存...')
+            cache = dir_hash(self.rootDir)
+
+            if self.exists(self.cacheFileName):
+                self.deleteObjects([self.cacheFileName])
+
+            cacheContent = yaml.safe_dump(cache).encode('utf-8')
+            self.client.put_object(Bucket=self.bucket, Key=self.cacheFileName, Body=cacheContent)
+
+            print('缓存已更新 ' + self.cacheFileName)
 
     def getName(self):
         return '腾讯云对象存储(COS)'

@@ -1,7 +1,10 @@
 import re
+from io import BytesIO, BufferedRandom
 
 import oss2
+import yaml
 
+from src.utilities.dir_hash import dir_hash
 from src.utilities.file import File
 from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
 
@@ -10,6 +13,10 @@ class AliyunOSS(AbstractServiceProvider):
     def __init__(self, uploadTool, config):
         super(AliyunOSS, self).__init__(uploadTool, config)
 
+        self.cache = []  # 缓存的远程文件结构
+        self.uploaded = False  # 是否有过上传行为
+        self.rootDir: File = None  # 本地根目录
+
         access_id = config['access_id']
         access_key = config['access_key']
         region = config['region']
@@ -17,7 +24,11 @@ class AliyunOSS(AbstractServiceProvider):
         self.bucket = oss2.Bucket(oss2.Auth(access_id, access_key), region, bucket)
         oss2.defaults.connection_pool_size = 4  # 设置最大并发数限制
 
+        self.cacheFileName = config['cache_file']
         self.headerRules = config['header_rules'] if 'header_rules' in config else []
+
+    def initialize(self, rootDir: File):
+        self.rootDir = rootDir
 
     def fetchDirectory(self, path='', i=''):
         directory = []
@@ -37,14 +48,22 @@ class AliyunOSS(AbstractServiceProvider):
             else:  # 判断obj为文件。
                 if obj.key == path:
                     continue
+
                 pureName = obj.key[obj.key.rfind('/') + 1:]
                 # print(i + 'f: ' + pureName)
-                headers = self.bucket.head_object(obj.key).headers
-                hash = headers['x-oss-meta-hash'] if 'x-oss-meta-hash' in headers else ''
+
+                # 因为本地没有缓存文件，所以用不上这段代码
+                # if path + pureName == '/' + self.cacheFileName:
+                #     continue
+
+                # headers = self.bucket.head_object(obj.key).headers
+                # hash = headers['x-oss-meta-hash'] if 'x-oss-meta-hash' in headers else ''
                 directory.append({
                     'name': pureName,
-                    'length': headers['Content-Length'],
-                    'hash': hash
+                    'length': 0,
+                    'hash': ''
+                    # 'length': headers['Content-Length'],
+                    # 'hash': hash
                 })
 
         for D in d:
@@ -57,6 +76,11 @@ class AliyunOSS(AbstractServiceProvider):
         return directory
 
     def fetchAll(self):
+        if self.exists(self.cacheFileName):
+            self.cache = yaml.safe_load(self.downloadObject(self.cacheFileName).read())
+            print('缓存已找到 ' + self.cacheFileName)
+            return self.cache
+
         return self.fetchDirectory()
 
     def fetchFragments(self):
@@ -82,12 +106,38 @@ class AliyunOSS(AbstractServiceProvider):
 
     def uploadObject(self, path, localPath, baseDir, length, hash):
         file = File(localPath)
-        headers = {'x-oss-meta-hash': file.sha1, **self.getHeaders(file.relPath(baseDir))}
+        # headers = {'x-oss-meta-hash': file.sha1, **self.getHeaders(file.relPath(baseDir))}
+        headers = self.getHeaders(file.relPath(baseDir))
 
-        if self.uploadTool.debugMode:
+        if self.uploadTool.debugMode and len(headers) > 0:
             print(headers)
 
         oss2.resumable_upload(self.bucket, path, localPath, num_threads=4, headers=headers)
+        self.uploaded = True
+
+    def downloadObject(self, path):
+        buf = BufferedRandom(BytesIO())
+        for chunk in self.bucket.get_object(path):
+            buf.write(chunk)
+        buf.seek(0)
+        return buf
+
+    def exists(self, path):
+        return self.bucket.object_exists(path)
+
+    def cleanup(self):
+        # 实际上传文件之后，需要更新缓存文件
+        if self.uploaded:
+            print('正在更新缓存...')
+            cache = dir_hash(self.rootDir)
+
+            if self.exists(self.cacheFileName):
+                self.deleteObjects([self.cacheFileName])
+
+            cacheContent = yaml.safe_dump(cache).encode('utf-8')
+            self.bucket.put_object(key=self.cacheFileName, data=cacheContent)
+
+            print('缓存已更新 ' + self.cacheFileName)
 
     def getName(self):
         return '阿里云对象存储服务(OSS)'

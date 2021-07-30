@@ -4,11 +4,11 @@ debug: false
 # 是否跳过生成校验文件阶段
 upload_only: false
 
-# 上传到哪里？
-service_provider: tencent
-
 # 上传完成后，是否不自动退出
 show_any_key_to_exit: false
+
+# 上传到哪里？
+service_provider: tencent
 
 # 腾讯云对象存储
 tencent:
@@ -16,6 +16,11 @@ tencent:
   secret_id: 
   secret_key: 
   region: ap-nanjing
+
+  # 缓存文件的文件名。用来实现增量上传
+  # 此文件会存储到桶里（而不是本地），删除此文件可以进行一次全量上传
+  # 只支持放置在桶的根目录（也就是说这里只能填写文件名不能填写一个路径）
+  cache_file: .cache.yml
 
   # 自动设置http headers
   header_rules:
@@ -31,6 +36,11 @@ aliyun:
   access_id: 
   access_key: 
   region: oss-cn-chengdu.aliyuncs.com
+
+  # 缓存文件的文件名。用来实现增量上传
+  # 此文件会存储到桶里（而不是本地），删除此文件可以进行一次全量上传
+  # 只支持放置在桶的根目录（也就是说这里只能填写文件名不能填写一个路径）
+  cache_file: .cache.yml
 
   # 自动设置http headers
   header_rules:
