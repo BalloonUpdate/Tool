@@ -56,7 +56,7 @@ class AliyunOSS(AbstractServiceProvider):
 
         return directory
 
-    def fetchBukkit(self):
+    def fetchAll(self):
         return self.fetchDirectory()
 
     def fetchFragments(self):

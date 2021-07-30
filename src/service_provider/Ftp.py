@@ -1,14 +1,29 @@
 import calendar
-import json
+import io
 import os
 import ssl
 import time
 from ftplib import FTP as _FTP, FTP_TLS
+from io import BufferedRandom
+
+import yaml
 
 from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
+from src.utilities.dir_hash import dir_hash
 from src.utilities.file import File
 from src.utilities.file_comparer import SimpleFileObject
 from src.utilities.glue import glue
+
+
+class FtpFileObject:
+    def __init__(self, name: str, length: int, modified: int):
+        self.name = name
+        self.modified = modified
+        self.length = length
+
+    @property
+    def isFile(self):
+        return self.length >= 0
 
 
 class FtpClient:
@@ -46,38 +61,79 @@ class FtpClient:
         self.ftp.close()
         print(f"disconnected from {self.host}:{self.port}")
 
-    def uploadFile(self, localFile: File, remoteFile: str):
-        if not localFile.exists:
-            raise FileNotFoundError(f"'{localFile.path}' not found")
+    def uploadFile(self, file: File, path: str):
+        if not file.exists:
+            raise FileNotFoundError(f"'{file.path}' not found")
 
-        if localFile.isDirectory:
-            raise IsADirectoryError(f"'{localFile.path}' is not a file")
+        if file.isDirectory:
+            raise IsADirectoryError(f"'{file.path}' is not a file")
 
-        with open(localFile.path, 'rb') as ff:
-            self.ftp.storbinary('STOR ' + remoteFile, ff)
+        with open(file.path, 'rb') as ff:
+            self.ftp.storbinary('STOR ' + path, ff)
 
-    def deleteFile(self, remoteFile: str):
-        self.ftp.delete(remoteFile)
+    def uploadBinary(self, buf: io.RawIOBase, path: str):
+        self.ftp.storbinary('STOR ' + path, buf)
 
-    def deleteDirectory(self, remoteDir: str):
-        self.ftp.rmd(remoteDir)
+    def downloadBinary(self, filename, buffer_size=4 * 1024 * 1024):
+        buf = BufferedRandom(io.BytesIO(), buffer_size=buffer_size)
 
-    def mlsd(self):
-        return [a for a in self.ftp.mlsd()]
+        def cb(chunk):
+            buf.write(chunk)
 
-    def fileListByMlsd(self, path: str):
-        return [a[0] for a in self.ftp.mlsd(path)]
+        self.ftp.retrbinary('RETR ' + filename, cb)
+        return buf
 
-    def nlst(self):
-        return self.ftp.nlst()
+    def downloadAsText(self, filename, encoding='utf-8'):
+        buf = self.downloadBinary(filename)
+        buf.seek(0)
+
+        return buf.read().decode(encoding)
+
+    def deleteFile(self, path: str):
+        self.ftp.delete(path)
+
+    def deleteDirectory(self, path: str):
+        self.ftp.rmd(path)
+
+    def listFiles(self, path=''):
+        """列出详细文件信息"""
+        files = []
+        for f in self.mlsd(path):
+            isFile = f[1]['type'] == 'file'
+            files += [FtpFileObject(**{
+                'name': f[0],
+                'length': int(f[1]['size']) if isFile else -1,
+                'modified': int(f[1]['modify'])
+            })]
+        return files
+
+    def exists(self, path):
+        if path.endswith('/'):
+            path = path[:-1]
+        basename = os.path.basename(path)
+        dirname = os.path.dirname(path)
+        return basename in [os.path.basename(f) for f in self.nlst(dirname)]
+
+    # 低级API
+
+    def mlsd(self, path=''):
+        """列出当前目录下的文件信息"""
+        return [a for a in self.ftp.mlsd(path)]
+
+    def nlst(self, path=''):
+        """列出当前目录下的文件名"""
+        return self.ftp.nlst(path)
 
     def cd(self, path: str):
+        """获取当前工作目录"""
         self.ftp.cwd(path)
 
     def pwd(self):
+        """切换当前工作目录"""
         return self.ftp.pwd()
 
     def mkdir(self, path: str):
+        """创建文件夹"""
         self.ftp.mkd(path)
 
     def __enter__(self):
@@ -92,11 +148,9 @@ class Ftp(AbstractServiceProvider):
     def __init__(self, uploadTool, config):
         super(Ftp, self).__init__(uploadTool, config)
 
-        self.cacheFile = File('ftp.cache.json')
-        self.cache = json.loads(self.cacheFile.content) if self.cacheFile.exists else []
-
-        if self.cacheFile.exists:
-            print('cache loaded 缓存已加载')
+        self.cache = []  # 缓存的远程文件结构
+        self.uploaded = False  # 是否有过上传行为
+        self.rootDir: File = None  # 本地根目录
 
         self.host = config['host']
         self.port = config['port']
@@ -105,138 +159,95 @@ class Ftp(AbstractServiceProvider):
         self.basePath = config['base_path']
         self.secure = config['secure']
         self.prot_p = config['prot_p']
+        self.cacheFileName = config['cache_file']
+
+        # 补上末尾的/
+        self.basePath = self.basePath + '/' if not self.basePath.endswith('/') else self.basePath
 
         self.ftp = FtpClient(self.host, self.port, self.user, self.passwd, self.secure, self.prot_p)
 
-    def findInCache(self, path: str):
-        dirname = os.path.dirname(path)
-        basename = os.path.basename(path)
-
-        current = self.cache
-
-        for name in dirname.split('/'):
-            if name == '' or current is None:
-                continue
-
-            for child in current:
-                if child['name'] == name:
-                    current = child['children']
-                    break
-
-        if current is None:
-            return None
-
-        for child in current:
-            if child['name'] == basename:
-                return child
-        return None
-
-    def initialize(self):
+    def initialize(self, rootDir: File):
+        self.rootDir = rootDir
         self.ftp.open()
 
-    def fetchDirectory(self, path='', i=''):
-        # print(i + path)
+        # 创建根目录
+        if self.basePath != '/' and not self.ftp.exists(self.basePath):
+            self.ftp.mkdir(self.basePath)
 
+    def fetchDirectory(self, path='/'):
+        self.ftp.cd(self.basePath + (path[1:] if path.startswith('/') else path))
         print(f"cd into: {self.ftp.pwd()}")
-        self.ftp.cd(self.basePath + path)
 
         result = []
 
-        for fileObj in self.ftp.mlsd():
-            filename = fileObj[0]
-            filetype = fileObj[1]['type']
-            modify = int(fileObj[1]['modify'])
-            length = int(fileObj[1]['size'] if filetype == 'file' else '-1')
+        for fileObj in self.ftp.listFiles():
+            filename = fileObj.name
+            isFile = fileObj.isFile
 
-            # Convert to timestamp
-            modify = calendar.timegm(time.strptime(str(modify), '%Y%m%d%H%M%S'))
+            if path + filename == '/' + self.cacheFileName:
+                continue
 
-            timezoneOffset = self.config['timezone_offset']
-            if timezoneOffset != 0:
-                modify += 60 * 60 * timezoneOffset
-
-            if filetype == 'file':
-                result += [{
-                    'name': filename,
-                    'length': length,
-                    'hash': str(modify)+'/'+str(length)
-                }]
-
-            if filetype == 'dir':
-                prefix = (path+'/') if path != '' else ''
-                result += [{
-                    'name': filename,
-                    'children': self.fetchDirectory(prefix+filename, i + '    ')
-                }]
+            if isFile:
+                result += [{'name': filename, 'length': -1, 'hash': ''}]
+            else:
+                result += [{'name': filename, 'children': self.fetchDirectory(path + filename + '/')}]
 
         return result
 
-    def fetchBukkit(self):
-        return self.fetchDirectory()
+    def fetchAll(self):
+        if self.ftp.exists(self.basePath + self.cacheFileName):
+            self.cache = yaml.safe_load(self.ftp.downloadAsText(self.basePath + self.cacheFileName))
+            print('缓存已找到 '+self.cacheFileName)
+            return self.cache
 
-    def fetchFragments(self):
-        return []
+        return self.fetchDirectory()
 
     def deleteObjects(self, paths):
         for f in paths:
             self.ftp.deleteFile(self.basePath + f)
-            # print('delete file: /' + f)
 
     def deleteDirectories(self, paths):
         for f in paths:
             self.ftp.deleteDirectory(self.basePath + f)
-            # print('delete directory: /' + f)
 
     def uploadObject(self, path, localPath, baseDir, length, hash):
         localFile = File(localPath)
 
-        # check whether directory exists
         layers = path.split('/')
         _layers = [''] + [
-            glue(layers[:level+1], '/')
-            for level in range(0, len(layers)-1)
+            glue(layers[:level + 1], '/')
+            for level in range(0, len(layers) - 1)
         ]
-        # print('---------   ' + str(_layers)+'     Raw: '+str(layers))
 
-        # indent = ''
-        for i in range(0, len(_layers)-1):
+        for i in range(0, len(_layers) - 1):
             parent = _layers[i]
-            child = _layers[i+1]
+            child = _layers[i + 1]
 
-            res = self.ftp.fileListByMlsd(self.basePath + parent)
-            # print(indent+'* '+parent+'  |  '+child+'  ===  ' + self.basePath + parent+'  mlsd: '+str(res))
-
-            if os.path.basename(child) not in res:
-                # print(indent+'mkdir: '+child)
+            # self.ftp.cd(self.basePath + parent)
+            if not self.ftp.exists(self.basePath + child):
                 print('mkdir: ' + child)
                 self.ftp.mkdir(self.basePath + child)
-            # indent += '    '
 
-        # print(f"upload {localFile.path} => /{path}")
         self.ftp.uploadFile(localFile, self.basePath + path)
-
-    def compareFile(self, remoteFile: SimpleFileObject, localRelPath: str, localAbsPath: str):
-        localCache = self.findInCache(localRelPath)
-        r_hash = remoteFile.sha1
-        l_hash = localCache['hash'] if localCache is not None else ''
-        r = r_hash == l_hash
-        # print(str(r)+'   /   '+r_hash+' / '+l_hash)
-        return r
+        self.uploaded = True
 
     def cleanup(self):
-        print('prepare to save cache 正在更新缓存')
+        # 实际上传文件之后，需要更新缓存文件
+        if self.uploaded:
+            print('正在更新缓存...')
+            cache = dir_hash(self.rootDir)
 
-        cache = self.fetchDirectory()
+            if self.ftp.exists(self.basePath + self.cacheFileName):
+                self.ftp.deleteFile(self.basePath + self.cacheFileName)
 
-        if not self.cacheFile.exists:
-            self.cacheFile.create()
+            buf = BufferedRandom(io.BytesIO())
+            buf.write(yaml.safe_dump(cache).encode('utf-8'))
+            buf.seek(0)
+            self.ftp.uploadBinary(buf, self.basePath + self.cacheFileName)
 
-        with open(self.cacheFile.path, "w+", encoding="utf-8") as f:
-            f.write(json.dumps(cache, ensure_ascii=False, indent=4))
-
-        print('cache saved 缓存已更新')
+            print('缓存已更新 '+self.cacheFileName)
 
         self.ftp.close()
 
     def getName(self):
-        return 'FTP '+self.host+':'+str(self.port)
+        return 'FTP ' + self.host + ':' + str(self.port)

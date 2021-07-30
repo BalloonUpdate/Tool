@@ -142,7 +142,7 @@ class FileComparer2:
                 else:
                     if corresponding.isFile:
                         # if corresponding.sha1 != t.sha1:  # 校验hash
-                        if not self.compareFunc(corresponding, t.relPath(self.basePath), t.path):
+                        if not self.compareFunc(corresponding, t.path, t.relPath(self.basePath)):
                             # 先删除旧的再获取新的
                             self.addOldFile(corresponding, template.relPath(self.basePath))
                             self.addNewFile(corresponding, t)

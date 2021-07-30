@@ -68,7 +68,7 @@ class UploadTool:
             client: AbstractServiceProvider = provider(self, correspondingConfig)
 
             print('上传到' + client.getName())
-            client.initialize()
+            client.initialize(self.source)
 
             # 生成本地目录校验文件
             if 'upload_only' not in self.config or not self.config['upload_only']:
@@ -80,7 +80,7 @@ class UploadTool:
 
             # 获取远程文件目录
             print('正在获取远程文件目录..')
-            remote = client.fetchBukkit()
+            remote = client.fetchAll()
 
             # 计算文件差异
             print('正在计算文件差异..')

@@ -59,7 +59,9 @@ class TencentCOS(AbstractServiceProvider):
             marker = response['NextMarker']
         return structure
 
-    def fetchBukkit(self):
+    def fetchAll(self):
+        print(self.downloadObject('z/index.html').read())
+
         return self.fetchDirectory()
 
     def fetchFragments(self):
