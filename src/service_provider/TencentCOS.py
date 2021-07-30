@@ -128,6 +128,11 @@ class TencentCOS(AbstractServiceProvider):
         buf.seek(0)
         return buf
 
+    def makeDirectory(self, path):
+        if not self.exists(path):
+            self.client.put_object(Bucket=self.bucket, Key=path+'/', Body='')
+        self.uploaded = True
+
     def exists(self, path):
         try:
             self.client.head_object(Bucket=self.bucket, Key=path)

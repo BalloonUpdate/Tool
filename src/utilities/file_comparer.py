@@ -198,7 +198,7 @@ class FileComparer2:
             assert False, 'the types did not equal'
 
         if missing.isDirectory:
-            folder = template.parent.relPath(self.basePath)
+            folder = template.relPath(self.basePath)
             if folder not in self.newFolders and folder != '.':
                 self.newFolders += [folder]
             for m in missing:

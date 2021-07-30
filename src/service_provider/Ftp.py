@@ -231,6 +231,11 @@ class Ftp(AbstractServiceProvider):
         self.ftp.uploadFile(localFile, self.basePath + path)
         self.uploaded = True
 
+    def makeDirectory(self, path):
+        if not self.ftp.exists(self.basePath + path):
+            self.ftp.mkdir(self.basePath + path)
+        self.uploaded = True
+
     def cleanup(self):
         # 实际上传文件之后，需要更新缓存文件
         if self.uploaded:

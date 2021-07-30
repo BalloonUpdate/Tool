@@ -122,6 +122,11 @@ class AliyunOSS(AbstractServiceProvider):
         buf.seek(0)
         return buf
 
+    def makeDirectory(self, path):
+        if not self.exists(path):
+            self.bucket.put_object(key=path+'/', data='')
+        self.uploaded = True
+
     def exists(self, path):
         return self.bucket.object_exists(path)
 

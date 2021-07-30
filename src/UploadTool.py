@@ -115,6 +115,15 @@ class UploadTool:
                 if len(cp.oldFolders) > 0:
                     client.deleteDirectories(cp.oldFolders)
 
+            # 创建新目录
+            if len(cp.newFolders) > 0:
+                print('')
+                count = 0
+                for path in cp.newFolders:
+                    count += 1
+                    print(f'创建目录({count}/{len(cp.newFolders)}): {path}')
+                    client.makeDirectory(path)
+
             # 上传新文件
             if len(cp.newFiles) > 0:
                 print('')

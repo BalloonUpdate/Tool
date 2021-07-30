@@ -43,6 +43,11 @@ class AbstractServiceProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def makeDirectory(self, path):
+        """创建文件夹回调"""
+        pass
+
     def compareFile(self, remote: SimpleFileObject, local: str, path: str):
         """文件对比回调
         :param remote: 远程文件对象
