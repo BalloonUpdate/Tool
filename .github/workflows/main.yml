@@ -1,7 +1,5 @@
 on:
   push:
-    branches:
-      - main
     tags: 
       - "v*"
 
@@ -55,4 +53,4 @@ jobs:
         with:
           file: dist/*
           draft: false
-          tags: false
+          tags: true
