@@ -248,7 +248,7 @@ class Ftp(AbstractServiceProvider):
                 self.ftp.deleteFile(self.basePath + self.cacheFileName)
 
             buf = BufferedRandom(io.BytesIO())
-            buf.write(yaml.safe_dump(cache).encode('utf-8'))
+            buf.write(yaml.safe_dump(cache, sort_keys=False).encode('utf-8'))
             buf.seek(0)
             self.ftp.uploadBinary(buf, self.basePath + self.cacheFileName)
 

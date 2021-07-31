@@ -141,7 +141,7 @@ class AliyunOSS(AbstractServiceProvider):
             if self.exists(self.cacheFileName):
                 self.deleteObjects([self.cacheFileName])
 
-            cacheContent = yaml.safe_dump(cache).encode('utf-8')
+            cacheContent = yaml.safe_dump(cache, sort_keys=False).encode('utf-8')
             self.bucket.put_object(key=self.cacheFileName, data=cacheContent)
 
             print('缓存已更新 ' + self.cacheFileName)

@@ -153,7 +153,7 @@ class TencentCOS(AbstractServiceProvider):
             if self.exists(self.cacheFileName):
                 self.deleteObjects([self.cacheFileName])
 
-            cacheContent = yaml.safe_dump(cache).encode('utf-8')
+            cacheContent = yaml.safe_dump(cache, sort_keys=False).encode('utf-8')
             self.client.put_object(Bucket=self.bucket, Key=self.cacheFileName, Body=cacheContent)
 
             print('缓存已更新 ' + self.cacheFileName)
