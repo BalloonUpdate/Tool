@@ -166,6 +166,10 @@ class UploadTool:
         except qcloud_cos.cos_exception.CosException as e:
             print(traceback.format_exc())
             print('COS异常(可能是配置信息不正确)')
+            if e._message == 'check_hostname requires server_hostname':
+                print('可能的解决方法：请检查电脑是否开启了代理上网')
+                print('如果开启，请将<bucket-name>.cos.<region>.myqcloud.com添加到PAC白名单或者暂时关闭代理')
+                print('<bucket-name>为桶名，<region>为地域，示例：test-123456.cos.ap-chengdu.myqcloud.com')
         except SystemExit:
             pass
         except BaseException as e:
