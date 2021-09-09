@@ -50,7 +50,7 @@ aliyun:
       headers:
         Content-Encoding: gzip
 
-# FTP/SFTP
+# FTP/FTPS
 ftp:
   host: 127.0.0.1
   port: 21
@@ -65,7 +65,7 @@ ftp:
   # 只支持放置在根目录（也就是说这里只能填写文件名不能填写一个路径）
   cache_file: .cache.yml
 
-  # 启用TLS加密（SFTP）
+  # 启用TLS加密（FTPS）
   secure: false
 
   # 高级参数，登录后是否立即发送prot_p命令
