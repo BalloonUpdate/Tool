@@ -1,4 +1,7 @@
 import sys
+from src.utilities.env_util import getMetadata
 
-version = '3.1.2'
-inDevelopment = not getattr(sys, 'frozen', False)
+version = getMetadata()['version']
+commit = getMetadata()['commit']
+compile_time = getMetadata()['compile_time']
+inDev = not getattr(sys, 'frozen', False)

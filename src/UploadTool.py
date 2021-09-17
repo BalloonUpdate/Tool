@@ -5,7 +5,7 @@ import oss2
 import qcloud_cos
 import yaml
 
-from src.constant import inDevelopment, version
+from src.constant import inDev, version, commit, compile_time
 from src.exception.ConfigObjectNotFound import ConfigObjectNotFound
 from src.service_provider.AliyunOSS import AliyunOSS
 from src.service_provider.Ftp import Ftp
@@ -33,16 +33,16 @@ class UploadTool:
 
     def __init__(self):
         filename = 'config.yml'
-        self.configFile = File(sys.executable).parent(filename) if not inDevelopment else File(filename)
+        self.configFile = File(sys.executable).parent(filename) if not inDev else File(filename)
         self.config = None
         self.source = None
         self.debugMode = False
 
     def checkParam(self):
-        if len(sys.argv) < 2 and not inDevelopment:
+        if len(sys.argv) < 2 and not inDev:
             raise ParameterError(f'需要输入一个路径')
 
-        self.source = File(sys.argv[1]) if not inDevelopment else File('fileToUpload')
+        self.source = File(sys.argv[1]) if not inDev else File('fileToUpload')
 
         if not self.source.exists:
             raise ParameterError(f'目录 {self.source.path} 找不到')
@@ -63,7 +63,7 @@ class UploadTool:
             provider = self.serviceProviders[providerName]
 
             if providerName not in self.config:
-                raise ConfigObjectNotFound('config.yml中找不到'+providerName+'的对应配置信息')
+                raise ConfigObjectNotFound('config.yml中找不到' + providerName + '的对应配置信息')
 
             correspondingConfig = self.config[providerName]
 
@@ -142,12 +142,15 @@ class UploadTool:
             # 清理退出
             client.cleanup()
         else:
-            raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>, 可用值: '+str([k for k in self.serviceProviders.keys()]))
+            raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>, 可用值: ' + str([k for k in self.serviceProviders.keys()]))
 
     def main(self):
         isHashMode = False
 
-        print('UploadTool v'+version)
+        commit_sha = commit[:8] if len(commit) > 8 else commit
+        print('UploadTool v' + version + (f' ({commit_sha})' if len(commit) > 0 else ''))
+        print('CompileTime: ' + compile_time)
+        print()
 
         try:
             self.checkParam()
@@ -180,9 +183,7 @@ class UploadTool:
 
         # if not inDevelopment and not isHashMode and self.config is not None:
         #     if 'show_any_key_to_exit' in self.config and self.config['show_any_key_to_exit']:
-        if not inDevelopment and not isHashMode and self.config is not None:
+        if not inDev and not isHashMode and self.config is not None:
             if 'show_any_key_to_exit' in self.config:
                 if self.config['show_any_key_to_exit']:
                     input(f'任意键退出..')
-
-
