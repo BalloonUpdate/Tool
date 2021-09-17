@@ -65,15 +65,15 @@ class SFTPClient:
         self.sftp.rmdir(self.abspath(path))
 
     def list_files(self, path: str):
-        # 文件描述符可用于快速判断目录
+        # 读取文件列表（包含文件描述符，用于快速判断是否为目录）
         return self.sftp.listdir_attr(self.abspath(path))
 
-    # 设置工作目录，用于确定根目录
+    # 设置工作目录
     def swd(self, path: str):
         self.sftp.chdir(self.abspath(path))
 
     def create_directory(self, path: str):
-        self.sftp.mkdir(self.abspath(path), 0o644)
+        self.sftp.mkdir(path, 0o755)
 
     # 处理相对路径为绝对路径，避免问题
     def abspath(self, path: str):
@@ -97,9 +97,6 @@ class SFTP(AbstractServiceProvider):
         self.basePath = config['basePath']
         self.cacheFileName = config['cacheFile']
 
-        # 补上末尾的 /
-        self.basePath = self.basePath + '/' if not self.basePath.endswith('/') else self.basePath
-
         self.sftp = SFTPClient(self.host, self.port, self.user, self.usePkey, self.pkeyFile, self.passwd)
 
     def initialize(self, root_dir: File):
@@ -110,6 +107,7 @@ class SFTP(AbstractServiceProvider):
             self.sftp.swd(self.basePath)
         except IOError:
             self.sftp.create_directory(self.basePath)
+        self.sftp.swd(self.basePath)
 
     def list_recursively(self, path='.'):
         # 保存所有文件的列表
@@ -118,11 +116,11 @@ class SFTP(AbstractServiceProvider):
         # 获取当前指定目录下的所有目录及文件，包含属性值
         for entry in self.sftp.list_files(path):
             filename = entry.filename
-            full_path = self.sftp.abspath(filename)
+            full_path = self.sftp.abspath(f"{path}/{filename}")
             # 忽略缓存文件
             if full_path == self.sftp.abspath(self.cacheFileName):
                 continue
-            # 如果是目录，则递归处理该目录，否则将文件添加到列表
+            # 如果是目录，则添加并递归处理该目录
             if S_ISDIR(entry.st_mode):
                 result.append({'name': filename, 'children': self.list_recursively(full_path)})
             else:
@@ -136,6 +134,7 @@ class SFTP(AbstractServiceProvider):
             print('缓存已找到 '+self.cacheFileName)
             return self.cache
         except IOError:
+            # 未找到缓存，读取远程目录结构，准备全量上传
             return self.list_recursively()
 
     def deleteObjects(self, files):
@@ -161,7 +160,10 @@ class SFTP(AbstractServiceProvider):
             print('正在更新缓存...')
             cache = dir_hash(self.rootDir)
             # 虽然可以直接修改，但是删除重传就完事了
-            self.sftp.delete_file(self.cacheFileName)
+            try:
+                self.sftp.delete_file(self.cacheFileName)
+            except IOError:
+                pass
             buf = BufferedRandom(io.BytesIO())
             buf.write(yaml.safe_dump(cache, sort_keys=False).encode('utf-8'))
             buf.seek(0)
