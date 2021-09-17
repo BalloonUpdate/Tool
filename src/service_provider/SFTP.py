@@ -24,6 +24,8 @@ class SFTPClient:
 
     def open(self):
         print(f"正在连接到 {self.host}:{self.port}...")
+        # 自动添加远端主机到 known_hosts 中
+        # 从 transport 实例创建似乎并不需要
         # self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         if self.usePkey:
             print("使用公钥进行身份验证...")
@@ -32,6 +34,7 @@ class SFTPClient:
         else:
             print("使用密码进行身份验证...")
             self.transport.connect(username=self.user, password=self.password)
+        # 从 transport 实例创建 SFTP 客户端实例
         self.sftp = paramiko.SFTPClient.from_transport(self.transport)
         print(f"已连接到 {self.host}:{self.port}.")
 
@@ -40,13 +43,15 @@ class SFTPClient:
         print(f"已从 {self.host}:{self.port} 断开.")
 
     def upload_file(self, local_path_or_file_buf, remote_path: str, is_file_buf: bool):
+        # 区分从缓冲区上传和从本地路径上传，其实可以用 isInstance() 判断参数类型
         if is_file_buf:
             self.sftp.putfo(local_path_or_file_buf, self.abspath(remote_path))
         else:
             self.sftp.put(local_path_or_file_buf, self.abspath(remote_path))
 
-    def download_file(self, filename: str):
+    def open_remote_file(self, filename: str):
         buf = BufferedRandom(io.BytesIO())
+        # 打开远端文件句柄
         remote_file_obj = self.sftp.open(self.abspath(filename), 'r')
         buf.write(remote_file_obj.read())
         remote_file_obj.close()
@@ -60,23 +65,19 @@ class SFTPClient:
         self.sftp.rmdir(self.abspath(path))
 
     def list_files(self, path: str):
+        # 文件描述符可用于快速判断目录
         return self.sftp.listdir_attr(self.abspath(path))
 
+    # 设置工作目录，用于确定根目录
     def swd(self, path: str):
         self.sftp.chdir(self.abspath(path))
 
     def create_directory(self, path: str):
         self.sftp.mkdir(self.abspath(path), 0o644)
 
+    # 处理相对路径为绝对路径，避免问题
     def abspath(self, path: str):
         return self.sftp.normalize(path)
-
-    # def exists(self, path):
-    #     if path.endswith('/'):
-    #         path = path[:-1]
-    #     basename = os.path.basename(path)
-    #     dirname = os.path.dirname(path)
-    #     return basename in [os.path.basename(f) for f in self.nlst(dirname)]
 
 
 class SFTP(AbstractServiceProvider):
@@ -104,6 +105,7 @@ class SFTP(AbstractServiceProvider):
     def initialize(self, root_dir: File):
         self.rootDir = root_dir
         self.sftp.open()
+        # setWorkDir 失败意味目录不存在
         try:
             self.sftp.swd(self.basePath)
         except IOError:
@@ -116,9 +118,9 @@ class SFTP(AbstractServiceProvider):
         # 获取当前指定目录下的所有目录及文件，包含属性值
         for entry in self.sftp.list_files(path):
             filename = entry.filename
-            full_path = path + '/' + filename
+            full_path = self.sftp.abspath(filename)
             # 忽略缓存文件
-            if full_path == './' + self.cacheFileName:
+            if full_path == self.sftp.abspath(self.cacheFileName):
                 continue
             # 如果是目录，则递归处理该目录，否则将文件添加到列表
             if S_ISDIR(entry.st_mode):
@@ -128,8 +130,9 @@ class SFTP(AbstractServiceProvider):
         return result
 
     def fetchAll(self):
+        # 尝试读取缓存
         try:
-            self.cache = yaml.safe_load(self.sftp.download_file(self.cacheFileName))
+            self.cache = yaml.safe_load(self.sftp.open_remote_file(self.cacheFileName))
             print('缓存已找到 '+self.cacheFileName)
             return self.cache
         except IOError:
@@ -157,7 +160,7 @@ class SFTP(AbstractServiceProvider):
         if self.modified:
             print('正在更新缓存...')
             cache = dir_hash(self.rootDir)
-            self.sftp.swd(self.basePath)
+            # 虽然可以直接修改，但是删除重传就完事了
             self.sftp.delete_file(self.cacheFileName)
             buf = BufferedRandom(io.BytesIO())
             buf.write(yaml.safe_dump(cache, sort_keys=False).encode('utf-8'))
