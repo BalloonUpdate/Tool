@@ -148,7 +148,7 @@ class UploadTool:
         isHashMode = False
 
         commit_sha = commit[:8] if len(commit) > 8 else commit
-        print('UploadTool v' + version + (f' ({commit_sha})' if len(commit) > 0 else ''))
+        print('UploadTool ' + version + (f' ({commit_sha})' if len(commit) > 0 else ''))
         print('CompileTime: ' + compile_time)
         print()
 

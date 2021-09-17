@@ -10,7 +10,7 @@ def get_git_tag(default):
 
 def get_git_sha():
     import os
-    return os.getenv('GITHUB_REF', '')
+    return os.getenv('GITHUB_SHA', '')
 
 # 生成版本号文件
 import json

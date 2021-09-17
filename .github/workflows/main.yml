@@ -39,7 +39,7 @@ jobs:
                   hashobj.update(f.read())
                   return hashobj.hexdigest()
           def show_hash(f, hashobj, indent='    '):
-              print(hashobj.name + ': ' + hash(f, hashobj))
+              print(hashobj.name + ': ' + hash(f, hashobj) + '\n')
           for f in os.listdir(directory):
               sf = os.path.join(directory, f)
               if os.path.isfile(sf):
