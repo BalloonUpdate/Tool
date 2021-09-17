@@ -9,6 +9,7 @@ from src.constant import inDevelopment, version
 from src.exception.ConfigObjectNotFound import ConfigObjectNotFound
 from src.service_provider.AliyunOSS import AliyunOSS
 from src.service_provider.Ftp import Ftp
+from src.service_provider.SFTP import SFTP
 from src.service_provider.TencentCOS import TencentCOS
 from src.utilities.dir_hash import dir_hash
 from src.exception.NoServiceProviderFoundError import NoServiceProviderFoundError
@@ -26,7 +27,8 @@ class UploadTool:
     serviceProviders = {
         'tencent': TencentCOS,
         'aliyun': AliyunOSS,
-        'ftp': Ftp
+        'ftp': Ftp,
+        'sftp': SFTP
     }
 
     def __init__(self):
