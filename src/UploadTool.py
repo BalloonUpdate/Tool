@@ -55,7 +55,7 @@ class UploadTool:
             if d.isDirectory:
                 print(f'正在生成 {d.name}.yml')
 
-                content = yaml.dump(dir_hash(d))
+                content = yaml.dump(dir_hash(d), canonical=True)
                 d.parent(d.name + '.yml').content = content
 
     def uploadingMode(self, providerName):
