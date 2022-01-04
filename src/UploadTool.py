@@ -55,7 +55,7 @@ class UploadTool:
             if d.isDirectory:
                 print(f'正在生成 {d.name}.yml')
 
-                content = yaml.dump(dir_hash(d))
+                content = yaml.dump(dir_hash(d), canonical=True)
                 d.parent(d.name + '.yml').content = content
 
     def uploadingMode(self, providerName):
@@ -77,7 +77,7 @@ class UploadTool:
                 for f in [file for file in self.source if file.isDirectory]:
                     print(f'正在生成 {f.name}.yml')
 
-                    content = yaml.dump(dir_hash(f))
+                    content = yaml.dump(dir_hash(f), canonical=True)
                     f.parent(f.name + '.yml').content = content
 
             # 获取远程文件目录
