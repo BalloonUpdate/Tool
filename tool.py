@@ -203,5 +203,5 @@ if __name__ == "__main__":
         if d.isDirectory:
             print(f'正在生成 {d.name}.yml')
 
-            content = yaml.dump(get_dir(d))
+            content = yaml.dump(get_dir(d), canonical=True)
             d.parent(d.name + '.yml').content = content
