@@ -16,11 +16,12 @@ def get_git_sha():
     return os.getenv('GITHUB_SHA', '')
 
 # 生成版本号文件
+import os
 import json
 import time
 
 metadata_file = 'meta.json'
-version_text = get_git_tag('0.0.0')
+version_text = get_git_tag(os.getenv('PROJECT_VERSION', '0.0.0'))
 commit_sha = get_git_sha()
 compile_time = time.strftime("%Y-%m-%d %H:%M-%S %z")
 
