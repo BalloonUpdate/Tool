@@ -5,7 +5,10 @@ def get_git_tag(default):
     import re
     ref = os.getenv('GITHUB_REF', '')
     match = re.search(r'(?<=refs/tags/).*', ref)
-    tag_name = match[0] if match is not None else default
+    if match is not None:
+        tag_name = match[0][1:] if match[0].startswith('v') else match[0]
+    else:
+        tag_name = default
     return tag_name
 
 def get_git_sha():
