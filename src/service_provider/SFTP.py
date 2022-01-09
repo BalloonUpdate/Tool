@@ -59,6 +59,16 @@ class SFTPClient:
         return buf
 
     def delete_file(self, path: str):
+        try:
+            self.sftp.remove(self.abspath(path))
+        except Exception:
+            print('删除失败，文件可能不存在')
+
+    def delete_directory(self, path: str):
+        try:
+            self.sftp.rmdir(self.abspath(path))
+        except Exception:
+            print('删除失败，目录可能不存在')
         self.sftp.remove(self.abspath(path))
 
     def delete_directory(self, path: str):
