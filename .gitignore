@@ -134,3 +134,6 @@ dmypy.json
 /fileToUpload
 /config.yml
 /builddev.cmd
+/src/TestSFTP.py
+/.vs
+/id_rsa
