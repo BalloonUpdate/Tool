@@ -1,17 +1,17 @@
-name: Release Build
+name: Test
 
 on:
-  push:
-    tags: 
-      - "v*"
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-2019
     steps:
-      - name: Checkout
+      - name: Git Checkout
         uses: actions/checkout@v2
-      
+
       - name: Load Cache
         uses: actions/cache@v2
         with:
@@ -39,7 +39,7 @@ jobs:
                   hashobj.update(f.read())
                   return hashobj.hexdigest()
           def show_hash(f, hashobj, indent='    '):
-              print(hashobj.name + ': ' + hash(f, hashobj) + '\n')
+              print(hashobj.name + ': ' + hash(f, hashobj))
           for f in os.listdir(directory):
               sf = os.path.join(directory, f)
               if os.path.isfile(sf):
@@ -47,13 +47,3 @@ jobs:
                   show_hash(sf, hashlib.md5())
                   show_hash(sf, hashlib.sha1())
                   show_hash(sf, hashlib.sha256())
-
-
-      - name: Upload To Github Release
-        uses: xresloader/upload-to-github-release@98857380fc282f8075a62c6af230fe92bd93aff8
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        with:
-          file: dist/*
-          draft: false
-          tags: true

@@ -16,7 +16,7 @@ oss2==2.14.0
 pefile==2021.5.24
 pycparser==2.20
 pycryptodome==3.10.1
-pyinstaller==4.4
+pyinstaller==4.7
 pyinstaller-hooks-contrib==2021.2
 pywin32-ctypes==0.2.0
 PyYAML==5.4.1
@@ -25,5 +25,4 @@ six==1.16.0
 typing-extensions==3.10.0.0
 urllib3==1.26.6
 zipp==3.4.1
-
 paramiko~=2.7.2
