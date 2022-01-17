@@ -9,6 +9,7 @@ from src.constant import inDev, version, commit, compile_time
 from src.exception.ConfigObjectNotFound import ConfigObjectNotFound
 from src.service_provider.AliyunOSS import AliyunOSS
 from src.service_provider.Ftp import Ftp
+from src.service_provider.ParallelUploadServiceProvider import ParallelUploadServiceProvider
 from src.service_provider.SFTP import SFTP
 from src.service_provider.TencentCOS import TencentCOS
 from src.utilities.dir_hash import dir_hash
@@ -73,7 +74,7 @@ class UploadTool:
             client.initialize(self.source)
 
             # 生成本地目录校验文件
-            if 'upload_only' not in self.config or not self.config['upload_only']:
+            if not self.config.get('upload_only', False):
                 for f in [file for file in self.source if file.isDirectory]:
                     print(f'正在生成 {f.name}.yml')
 
@@ -90,8 +91,7 @@ class UploadTool:
             cp.compareWithList(self.source, remote)
 
             # 输出差异结果
-            if len(cp.oldFolders) == 0 and len(cp.oldFiles) == 0 and \
-                    len(cp.newFolders) == 0 and len(cp.newFiles) == 0:
+            if sum([len(cp.oldFolders), len(cp.oldFiles), len(cp.newFolders), len(cp.newFiles)]) == 0:
                 print('无差异')
             else:
                 print(f'旧文件: {len(cp.oldFiles)}')
@@ -134,10 +134,12 @@ class UploadTool:
                     length = v[0]
                     hash = v[1]
                     localFile = self.source(path)
-
-                    count += 1
-                    print(f'上传本地文件({count}/{len(cp.newFiles)}): {path}')
+                    if not isinstance(client, ParallelUploadServiceProvider):
+                        count += 1
+                        print(f'上传本地文件({count}/{len(cp.newFiles)}): {path}')
                     client.uploadObject(path, localFile.path, self.source.path, length, hash)
+                if isinstance(client, ParallelUploadServiceProvider):
+                    client.startParallelUploadWork()
 
             # 清理退出
             client.cleanup()
