@@ -1,7 +1,7 @@
 import sys
 from src.utilities.env_util import getMetadata
 
-version = getMetadata()['version']
-commit = getMetadata()['commit']
-compile_time = getMetadata()['compile_time']
+version = getMetadata().get('version', 'dev')
+commit = getMetadata().get('commit', 'not in git')
+compile_time = getMetadata().get('compile_time', '<parser mode>')
 inDev = not getattr(sys, 'frozen', False)
