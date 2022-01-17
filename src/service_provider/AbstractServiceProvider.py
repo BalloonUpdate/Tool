@@ -1,4 +1,6 @@
+import time
 from abc import ABC, abstractmethod
+from queue import Queue
 
 from src.utilities.file import File
 from src.utilities.file_comparer import SimpleFileObject
@@ -64,4 +66,3 @@ class AbstractServiceProvider(ABC):
     def getName(self):
         """可阅读的服务提供商的名字"""
         pass
-
