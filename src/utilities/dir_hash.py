@@ -8,7 +8,8 @@ def dir_hash(dir: File):
             structure.append({
                 'name': f.name,
                 'length': f.length,
-                'hash': f.sha1
+                'hash': f.sha1,
+                'modified': f.modifiedTime
             })
         if f.isDirectory:
             structure.append({
