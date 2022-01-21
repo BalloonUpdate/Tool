@@ -1,3 +1,4 @@
+import json
 import re
 from io import BytesIO, BufferedRandom
 
@@ -26,6 +27,7 @@ class AliyunOSS(AbstractServiceProvider):
 
         self.cacheFileName = config['cache_file']
         self.headerRules = config['header_rules'] if 'header_rules' in config else []
+        self.allow_empty_directory = config.get('allow_empty_directory', False)
 
     def initialize(self, rootDir: File):
         self.rootDir = rootDir
@@ -125,7 +127,7 @@ class AliyunOSS(AbstractServiceProvider):
         return buf
 
     def makeDirectory(self, path):
-        if not self.exists(path):
+        if self.allow_empty_directory and not self.exists(path):
             self.bucket.put_object(key=path+'/', data='')
         self.modified = True
 
@@ -141,7 +143,8 @@ class AliyunOSS(AbstractServiceProvider):
             if self.exists(self.cacheFileName):
                 self.deleteObjects([self.cacheFileName])
 
-            cacheContent = yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8')
+            # cacheContent = yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8')
+            cacheContent = json.dumps(cache, ensure_ascii=False)
             self.bucket.put_object(key=self.cacheFileName, data=cacheContent)
 
             print('缓存已更新 ' + self.cacheFileName)

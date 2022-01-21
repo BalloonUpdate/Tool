@@ -1,6 +1,6 @@
+import json
 import sys
 import traceback
-
 import oss2
 import qcloud_cos
 import yaml
@@ -18,10 +18,6 @@ from src.exception.ParameterError import ParameterError
 from src.utilities.file import File
 from src.utilities.file_comparer import FileComparer2
 from src.service_provider.AbstractServiceProvider import AbstractServiceProvider
-
-
-def printObj(obj):
-    print(yaml.dump(obj))
 
 
 class UploadTool:
@@ -73,13 +69,14 @@ class UploadTool:
             print('上传到' + client.getName())
             client.initialize(self.source)
 
-            # 生成本地目录校验文件
+            # 生成结构文件
             if not self.config.get('upload_only', False):
                 for f in [file for file in self.source if file.isDirectory]:
-                    print(f'正在生成结构文件 {f.name}.yml')
+                    print(f'正在生成结构文件 {f.name}.json')
 
-                    content = yaml.dump(dir_hash(f), canonical=True)
-                    f.parent(f.name + '.yml').content = content
+                    content = json.dumps(dir_hash(f), ensure_ascii=False)
+                    # content = yaml.dump(dir_hash(f), canonical=True)
+                    f.parent(f.name + '.json').content = content
 
             # 获取远程文件目录
             print('正在获取远程文件目录..')
@@ -143,6 +140,12 @@ class UploadTool:
 
             # 清理退出
             client.cleanup()
+
+            # 清理结构文件
+            if not self.config.get('upload_only', False) and self.config.get('remove_structure_file', True):
+                for f in [file for file in self.source if file.isDirectory]:
+                    f.parent(f.name + '.json').delete()
+
         else:
             raise NoServiceProviderFoundError(f'未知的服务提供商: <{providerName}>, 可用值: ' + str([k for k in self.serviceProviders.keys()]))
 

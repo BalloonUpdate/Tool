@@ -1,4 +1,5 @@
 import io
+import json
 from io import BufferedRandom
 from stat import S_ISDIR
 
@@ -175,7 +176,8 @@ class SFTP(AbstractServiceProvider):
             except IOError:
                 pass
             buf = BufferedRandom(io.BytesIO())
-            buf.write(yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8'))
+            # buf.write(yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8'))
+            cacheContent = json.dumps(cache, ensure_ascii=False)
             buf.seek(0)
             self.sftp.upload_file(buf, self.cacheFileName, True)
             print(f'缓存已更新 {self.cacheFileName}')

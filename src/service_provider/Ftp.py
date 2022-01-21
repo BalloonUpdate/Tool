@@ -1,5 +1,6 @@
 import calendar
 import io
+import json
 import os
 import ssl
 import time
@@ -248,7 +249,9 @@ class Ftp(AbstractServiceProvider):
                 self.ftp.deleteFile(self.basePath + self.cacheFileName)
 
             buf = BufferedRandom(io.BytesIO())
-            buf.write(yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8'))
+            # buf.write(yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8'))
+            cacheContent = json.dumps(cache, ensure_ascii=False)
+            buf.write(cacheContent)
             buf.seek(0)
             self.ftp.uploadBinary(buf, self.basePath + self.cacheFileName)
 

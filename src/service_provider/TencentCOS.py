@@ -1,3 +1,4 @@
+import json
 import re
 import yaml
 import os.path
@@ -42,6 +43,7 @@ class TencentCOS(ParallelUploadServiceProvider):
             CosConfig(Region='accelerate', SecretId=secret_id, SecretKey=secret_key))
         self.cacheFileName = config['cache_file']
         self.headerRules = config['header_rules'] if 'header_rules' in config else []
+        self.allow_empty_directory = config.get('allow_empty_directory', False)
 
     def initialize(self, rootDir: File):
         self.rootDir = rootDir
@@ -137,8 +139,9 @@ class TencentCOS(ParallelUploadServiceProvider):
 
     def makeDirectory(self, path):
         # COS 无需手动创建目录，上传子文件时会自动创建目录
-        # if not self.exists(path):
-        #     self.client.put_object(Bucket=self.bucket, Key=path+'/', Body='')
+        # by asforest（2022年1月21日）: 某些情况还是需要显式创建目录，避免空目录丢失的问题（默认不开启）
+        if self.allow_empty_directory and not self.exists(path):
+            self.client.put_object(Bucket=self.bucket, Key=path+'/', Body='')
         self.modified = True
 
     def exists(self, path):
@@ -159,7 +162,8 @@ class TencentCOS(ParallelUploadServiceProvider):
             if self.exists(self.cacheFileName):
                 self.deleteObjects([self.cacheFileName])
 
-            cacheContent = yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8')
+            # cacheContent = yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8')
+            cacheContent = json.dumps(cache, ensure_ascii=False)
             self.client.put_object(Bucket=self.bucket, Key=self.prefix + self.cacheFileName, Body=cacheContent)
 
             print('缓存已更新 ' + self.cacheFileName)
