@@ -7,6 +7,9 @@ upload_only: false
 # 上传完成后，是否不自动退出
 show_any_key_to_exit: false
 
+# 自动清理结构文件
+remove_structure_file: true
+
 # 上传到哪里？
 service_provider: tencent
 
@@ -33,6 +36,9 @@ tencent:
   # 只支持放置在前缀下的第一级目录（也就是说这里只能填写文件名不能填写一个路径）
   cache_file: .cache.yml
 
+  # 允许创建空目录
+  allow_empty_directory: false
+
   # 自动设置http headers
   header_rules:
     # 正则表达式(按相对路径匹配，此路径不包含要上传的文件夹本身)
@@ -52,6 +58,9 @@ aliyun:
   # 此文件会存储到桶里（而不是本地），删除此文件可以进行一次全量上传
   # 只支持放置在桶的根目录（也就是说这里只能填写文件名不能填写一个路径）
   cache_file: .cache.yml
+
+  # 允许创建空目录
+  allow_empty_directory: false
 
   # 自动设置http headers
   header_rules:
