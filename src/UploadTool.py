@@ -54,7 +54,7 @@ class UploadTool:
     def hashingMode(self):
         for d in self.source:
             if d.isDirectory:
-                print(f'正在生成 {d.name}.yml')
+                print(f'正在生成结构文件 {d.name}.yml')
 
                 content = yaml.dump(dir_hash(d), canonical=True)
                 d.parent(d.name + '.yml').content = content
@@ -76,7 +76,7 @@ class UploadTool:
             # 生成本地目录校验文件
             if not self.config.get('upload_only', False):
                 for f in [file for file in self.source if file.isDirectory]:
-                    print(f'正在生成 {f.name}.yml')
+                    print(f'正在生成结构文件 {f.name}.yml')
 
                     content = yaml.dump(dir_hash(f), canonical=True)
                     f.parent(f.name + '.yml').content = content
@@ -150,8 +150,8 @@ class UploadTool:
         isHashMode = False
 
         commit_sha = commit[:8] if len(commit) > 8 else commit
-        print('UploadTool ' + version + (f' ({commit_sha})' if len(commit) > 0 else ''))
-        print('CompileTime: ' + compile_time)
+        print('小工具-' + version + (f' ({commit_sha})' if len(commit) > 0 else ''))
+        print('编译时间: ' + compile_time)
         print()
 
         try:
