@@ -2,11 +2,6 @@ import sys
 import os
 import shutil
 import hashlib
-try:
-    import yaml
-except ImportError as e:
-    print('找不到pyyaml包，请使用pip安装(pip install pyyaml)')
-    sys.exit(1)
 
 class File:
     def __init__(self, filePath):
@@ -201,7 +196,7 @@ if __name__ == "__main__":
     # 生成校验文件
     for d in source:
         if d.isDirectory:
-            print(f'正在生成 {d.name}.yml')
+            print(f'正在生成结构文件 {d.name}.json')
 
-            content = yaml.dump(get_dir(d), canonical=True)
-            d.parent(d.name + '.yml').content = content
+            content = json.dumps(get_dir(d), ensure_ascii=False)
+            d.parent(d.name + '.json').content = content
