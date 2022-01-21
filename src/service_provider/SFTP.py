@@ -175,7 +175,7 @@ class SFTP(AbstractServiceProvider):
             except IOError:
                 pass
             buf = BufferedRandom(io.BytesIO())
-            buf.write(yaml.safe_dump(cache, sort_keys=False).encode('utf-8'))
+            buf.write(yaml.safe_dump(cache, sort_keys=False, canonical=True).encode('utf-8'))
             buf.seek(0)
             self.sftp.upload_file(buf, self.cacheFileName, True)
             print(f'缓存已更新 {self.cacheFileName}')
